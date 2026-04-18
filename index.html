@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SafeSignal</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="background-glow"></div>
+
+  <main class="app-shell">
+    <section class="card">
+      <div class="header">
+        <div class="logo-wrap">
+          <span class="logo">🛡️</span>
+        </div>
+        <div>
+          <h1>SafeSignal</h1>
+          <p class="subtitle">
+            Detect suspicious messages, scam language, risky links, and phishing signals in seconds.
+          </p>
+        </div>
+      </div>
+
+      <label for="inputText" class="label">Paste a message or link</label>
+      <textarea
+        id="inputText"
+        placeholder="Example: URGENT! Your bank account is suspended. Verify now..."
+      ></textarea>
+
+      <div class="demo-buttons">
+        <button class="demo-btn" onclick="loadExample('bank')">Bank scam</button>
+        <button class="demo-btn" onclick="loadExample('job')">Job scam</button>
+        <button class="demo-btn" onclick="loadExample('safe')">Safe message</button>
+      </div>
+
+      <div class="actions two-buttons">
+        <button id="analyzeBtn" onclick="checkScam()">
+          <span class="btn-text">Analyze</span>
+          <span class="btn-loader hidden"></span>
+        </button>
+
+        <button id="clearBtn" class="secondary-btn" onclick="clearAll()">
+          Clear
+        </button>
+      </div>
+
+      <section id="result" class="result-card hidden"></section>
+
+      <section class="history-section">
+        <div class="history-header">
+          <h3>Recent scans</h3>
+          <button class="small-btn" onclick="clearHistory()">Clear history</button>
+        </div>
+        <div id="historyList" class="history-list">
+          <div class="empty-state">No scans yet.</div>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
