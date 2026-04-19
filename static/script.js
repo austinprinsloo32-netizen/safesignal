@@ -12,34 +12,71 @@ function getRiskIcon(score) {
 
 function handleModeChange() {
     const mode = document.getElementById("scanMode").value;
+    const singleInputSection = document.getElementById("singleInputSection");
+    const emailSection = document.getElementById("emailSection");
     const label = document.getElementById("inputLabel");
     const textArea = document.getElementById("inputText");
 
     if (mode === "url") {
+        singleInputSection.classList.remove("hidden");
+        emailSection.classList.add("hidden");
         label.textContent = "Paste a URL";
         textArea.placeholder = "Example: http://paypa1-login-secure.xyz";
+    } else if (mode === "email") {
+        singleInputSection.classList.add("hidden");
+        emailSection.classList.remove("hidden");
     } else {
+        singleInputSection.classList.remove("hidden");
+        emailSection.classList.add("hidden");
         label.textContent = "Paste a message or link";
         textArea.placeholder = "Example: URGENT! Your bank account is suspended...";
     }
 }
 
 function loadExample(type) {
+    const modeSelect = document.getElementById("scanMode");
     const textArea = document.getElementById("inputText");
+    const emailSender = document.getElementById("emailSender");
+    const emailSubject = document.getElementById("emailSubject");
+    const emailBody = document.getElementById("emailBody");
 
-    const examples = {
-        bank: "URGENT! Your bank account is suspended. Verify now using your OTP at http://bit.ly/test",
-        job: "Congratulations, your job offer has been approved. Pay a registration fee today to secure your position.",
-        safe: "Hi Austin, just confirming our meeting for tomorrow at 10:00.",
-        url: "http://paypa1-login-secure.xyz/reset-account"
-    };
-
-    textArea.value = examples[type] || "";
+    if (type === "bank") {
+        modeSelect.value = "text";
+        handleModeChange();
+        textArea.value = "URGENT! Your bank account is suspended. Verify now using your OTP at http://bit.ly/test";
+    } else if (type === "job") {
+        modeSelect.value = "text";
+        handleModeChange();
+        textArea.value = "Congratulations, your job offer has been approved. Pay a registration fee today to secure your position.";
+    } else if (type === "safe") {
+        modeSelect.value = "text";
+        handleModeChange();
+        textArea.value = "Hi Austin, just confirming our meeting for tomorrow at 10:00.";
+    } else if (type === "url") {
+        modeSelect.value = "url";
+        handleModeChange();
+        textArea.value = "http://paypa1-login-secure.xyz/reset-account";
+    } else if (type === "email") {
+        modeSelect.value = "email";
+        handleModeChange();
+        emailSender.value = "support@bank-alerts-secure.com";
+        emailSubject.value = "Urgent account verification required";
+        emailBody.value = "Dear customer, your online banking profile has been suspended. Verify your account immediately and confirm your OTP to avoid permanent closure.";
+    }
 }
 
 function clearAll() {
-    document.getElementById("inputText").value = "";
     const result = document.getElementById("result");
+
+    document.getElementById("inputText").value = "";
+    const emailSender = document.getElementById("emailSender");
+    const emailSubject = document.getElementById("emailSubject");
+    const emailBody = document.getElementById("emailBody");
+
+    if (emailSender) emailSender.value = "";
+    if (emailSubject) emailSubject.value = "";
+    if (emailBody) emailBody.value = "";
+
     result.classList.add("hidden");
     result.innerHTML = "";
 }
@@ -87,23 +124,73 @@ async function copyResult(text) {
 }
 
 async function checkScam() {
-    const textArea = document.getElementById("inputText");
     const result = document.getElementById("result");
     const button = document.getElementById("analyzeBtn");
     const btnText = button.querySelector(".btn-text");
     const btnLoader = button.querySelector(".btn-loader");
 
     const mode = document.getElementById("scanMode").value;
-    const text = textArea.value.trim();
+    const text = document.getElementById("inputText").value.trim();
+    const sender = document.getElementById("emailSender").value.trim();
+    const subject = document.getElementById("emailSubject").value.trim();
+    const body = document.getElementById("emailBody").value.trim();
 
-    if (!text) {
-        result.classList.remove("hidden");
-        result.innerHTML = `
-            <div class="empty-state">
-                Please paste a message or link before analyzing.
-            </div>
-        `;
-        return;
+    let payload = {};
+    let historyText = "";
+
+    if (mode === "email") {
+        if (!sender && !subject && !body) {
+            result.classList.remove("hidden");
+            result.innerHTML = `
+                <div class="empty-state">
+                    Please fill in the email fields before analyzing.
+                </div>
+            `;
+            return;
+        }
+
+        payload = {
+            mode: "email",
+            sender,
+            subject,
+            body
+        };
+
+        historyText = `${subject || "No subject"} | ${sender || "No sender"}`;
+    } else if (mode === "url") {
+        if (!text) {
+            result.classList.remove("hidden");
+            result.innerHTML = `
+                <div class="empty-state">
+                    Please paste a URL before analyzing.
+                </div>
+            `;
+            return;
+        }
+
+        payload = {
+            mode: "url",
+            url: text
+        };
+
+        historyText = text;
+    } else {
+        if (!text) {
+            result.classList.remove("hidden");
+            result.innerHTML = `
+                <div class="empty-state">
+                    Please paste a message or link before analyzing.
+                </div>
+            `;
+            return;
+        }
+
+        payload = {
+            mode: "text",
+            text: text
+        };
+
+        historyText = text;
     }
 
     button.disabled = true;
@@ -116,20 +203,6 @@ async function checkScam() {
     `;
 
     try {
-        let payload = {};
-
-        if (mode === "url") {
-            payload = {
-                mode: "url",
-                url: text
-            };
-        } else {
-            payload = {
-                mode: "text",
-                text: text
-            };
-        }
-
         const response = await fetch("/analyze", {
             method: "POST",
             headers: {
@@ -182,7 +255,7 @@ ${(data.reasons || []).map(r => `- ${r}`).join("\n")}`;
         `;
 
         saveToHistory({
-            text: text.length > 90 ? text.slice(0, 90) + "..." : text,
+            text: historyText.length > 90 ? historyText.slice(0, 90) + "..." : historyText,
             risk: data.risk,
             score: data.score
         });
@@ -200,4 +273,7 @@ ${(data.reasons || []).map(r => `- ${r}`).join("\n")}`;
     }
 }
 
-document.addEventListener("DOMContentLoaded", renderHistory);
+document.addEventListener("DOMContentLoaded", () => {
+    renderHistory();
+    handleModeChange();
+});

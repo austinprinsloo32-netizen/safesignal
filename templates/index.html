@@ -18,28 +18,71 @@
         <div>
           <h1>SafeSignal</h1>
           <p class="subtitle">
-            Detect suspicious messages, scam language, risky links, and phishing signals in seconds.
+            Detect suspicious messages, risky links, and scam-style email content in seconds.
           </p>
         </div>
       </div>
+
+      <section class="top-strip">
+        <div class="mini-stat">
+          <span class="mini-stat-label">Modes</span>
+          <strong>Text · URL · Email</strong>
+        </div>
+        <div class="mini-stat">
+          <span class="mini-stat-label">Local Status</span>
+          <strong>Ready</strong>
+        </div>
+      </section>
 
       <label for="scanMode" class="label">Scan mode</label>
       <select id="scanMode" onchange="handleModeChange()">
         <option value="text">Text Scanner</option>
         <option value="url">URL Scanner</option>
+        <option value="email">Email Scanner</option>
       </select>
 
-      <label for="inputText" class="label" id="inputLabel">Paste a message or link</label>
-      <textarea
-        id="inputText"
-        placeholder="Example: URGENT! Your bank account is suspended. Verify now..."
-      ></textarea>
+      <section id="singleInputSection">
+        <label for="inputText" class="label" id="inputLabel">Paste a message or link</label>
+        <textarea
+          id="inputText"
+          placeholder="Example: URGENT! Your bank account is suspended. Verify now..."
+        ></textarea>
+      </section>
+
+      <section id="emailSection" class="email-section hidden">
+        <div class="input-grid">
+          <div>
+            <label for="emailSender" class="label">Sender</label>
+            <input
+              id="emailSender"
+              type="text"
+              placeholder="Example: support@bank-alerts-secure.com"
+            />
+          </div>
+
+          <div>
+            <label for="emailSubject" class="label">Subject</label>
+            <input
+              id="emailSubject"
+              type="text"
+              placeholder="Example: Urgent account verification required"
+            />
+          </div>
+        </div>
+
+        <label for="emailBody" class="label">Email body</label>
+        <textarea
+          id="emailBody"
+          placeholder="Paste the email message here..."
+        ></textarea>
+      </section>
 
       <div class="demo-buttons">
         <button class="demo-btn" onclick="loadExample('bank')">Bank scam</button>
         <button class="demo-btn" onclick="loadExample('job')">Job scam</button>
         <button class="demo-btn" onclick="loadExample('safe')">Safe message</button>
         <button class="demo-btn" onclick="loadExample('url')">Suspicious URL</button>
+        <button class="demo-btn" onclick="loadExample('email')">Scam email</button>
       </div>
 
       <div class="actions two-buttons">

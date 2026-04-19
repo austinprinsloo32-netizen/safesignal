@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
-from detector import analyze_text, analyze_single_url
+from detector import analyze_text, analyze_single_url, analyze_email
 import os
 
 app = Flask(__name__)
@@ -21,6 +21,13 @@ def analyze():
     if mode == "url":
         url = data.get("url", "")
         result = analyze_single_url(url)
+
+    elif mode == "email":
+        sender = data.get("sender", "")
+        subject = data.get("subject", "")
+        body = data.get("body", "")
+        result = analyze_email(sender, subject, body)
+
     else:
         text = data.get("text", "")
         result = analyze_text(text)

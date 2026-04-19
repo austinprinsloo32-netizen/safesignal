@@ -46,6 +46,10 @@ SUSPICIOUS_URL_KEYWORDS = {
     "bank", "wallet", "confirm", "password", "account", "pay"
 }
 
+FREE_EMAIL_PROVIDERS = {
+    "gmail.com", "yahoo.com", "outlook.com", "hotmail.com", "icloud.com", "proton.me"
+}
+
 
 def extract_urls(text):
     return re.findall(r'https?://[^\s]+', text)
@@ -263,4 +267,59 @@ def analyze_single_url(url):
         "reasons": unique_reasons,
         "advice": advice,
         "domain": domain
+    }
+
+
+def analyze_email(sender, subject, body):
+    sender = (sender or "").strip()
+    subject = (subject or "").strip()
+    body = (body or "").strip()
+
+    combined_text = f"{subject}\n{body}"
+    result = analyze_text(combined_text)
+
+    score = result["score"]
+    reasons = list(result["reasons"])
+
+    if sender:
+        sender_lower = sender.lower()
+
+        if "@" not in sender_lower:
+            score += 2
+            reasons.append("Sender format looks unusual or incomplete")
+        else:
+            sender_domain = sender_lower.split("@")[-1]
+
+            if sender_domain in FREE_EMAIL_PROVIDERS:
+                score += 1
+                reasons.append(f"Sender uses a free email provider: '{sender_domain}'")
+
+            if any(keyword in sender_domain for keyword in ["secure", "verify", "login", "update", "alert"]):
+                score += 2
+                reasons.append(f"Sender domain contains suspicious wording: '{sender_domain}'")
+
+            if sender_domain.count("-") >= 2:
+                score += 1
+                reasons.append("Sender domain uses many hyphens")
+
+            if any(char.isdigit() for char in sender_domain):
+                score += 1
+                reasons.append("Sender domain contains numbers")
+
+    if subject:
+        subject_lower = subject.lower()
+        if any(word in subject_lower for word in ["urgent", "verify", "suspended", "winner", "refund", "payment"]):
+            score += 2
+            reasons.append("Subject line uses urgent or scam-style wording")
+
+    unique_reasons = list(dict.fromkeys(reasons))
+    risk, advice = classify_risk(score)
+
+    return {
+        "risk": risk,
+        "score": score,
+        "reasons": unique_reasons,
+        "advice": advice,
+        "sender": sender,
+        "subject": subject
     }
