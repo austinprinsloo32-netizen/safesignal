@@ -517,7 +517,7 @@ def estimate_ocr_confidence(text):
     confidence = max(0.0, min(confidence, 1.0))
 
     return round(confidence, 2)
-    
+
 def analyze_image_file(image_file):
     try:
         extracted_text = extract_text_from_image(image_file)
@@ -528,7 +528,9 @@ def analyze_image_file(image_file):
             "reasons": [f"OCR failed: {str(e)}"],
             "insights": [],
             "advice": "Please try again in a moment or use a clearer screenshot.",
-            "extracted_text": ""
+            "extracted_text": "",
+            "ocr_confidence": 0.0,
+            "ocr_quality": "Failed"
         }
 
     if not extracted_text:
@@ -538,9 +540,24 @@ def analyze_image_file(image_file):
             "reasons": ["No readable text could be extracted from the image."],
             "insights": [],
             "advice": "Try a clearer screenshot with larger text and better contrast.",
-            "extracted_text": ""
+            "extracted_text": "",
+            "ocr_confidence": 0.0,
+            "ocr_quality": "Low"
         }
 
     result = analyze_text(extracted_text)
+
+    ocr_confidence = estimate_ocr_confidence(extracted_text)
+
+    if ocr_confidence >= 0.75:
+        ocr_quality = "High"
+    elif ocr_confidence >= 0.45:
+        ocr_quality = "Medium"
+    else:
+        ocr_quality = "Low"
+
     result["extracted_text"] = extracted_text
+    result["ocr_confidence"] = ocr_confidence
+    result["ocr_quality"] = ocr_quality
+
     return result

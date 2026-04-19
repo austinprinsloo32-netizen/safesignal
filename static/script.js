@@ -274,11 +274,18 @@ ${(data.reasons || []).map(r => `- ${r}`).join("\n")}`;
             </div>
 
             ${
-                data.extracted_text !== undefined
-                    ? `<div class="section-label">Extracted Text</div>
-                       <div class="extracted-box">${data.extracted_text || "No text extracted."}</div>`
-                    : ``
-            }
+    data.extracted_text !== undefined
+        ? `
+            <div class="section-label">Extracted Text</div>
+            <div class="extracted-box">${data.extracted_text || "No text extracted."}</div>
+
+            <div class="section-label">OCR Quality</div>
+            <div class="score-pill">
+                ${data.ocr_quality || "Unknown"} (${data.ocr_confidence ?? 0})
+            </div>
+          `
+        : ``
+}
 
             <div class="section-label">Score</div>
             <div class="score-pill">${data.score} risk points detected</div>
