@@ -46,7 +46,7 @@ It analyzes input using weighted scoring, URL inspection, and scam-pattern detec
 - Extracts text using OCR
 - Runs scam analysis on the extracted text
 
-> Note: OCR support may vary by deployment environment.
+> Note: Screenshot OCR is currently available in local development and is not yet fully supported in the live deployment environment.
 
 ### 5. Weighted Risk Scoring
 - Combines multiple scam indicators using severity-based weights
