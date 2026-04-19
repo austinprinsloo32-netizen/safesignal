@@ -1,8 +1,8 @@
 # 🛡️ SafeSignal
 
-SafeSignal is a web-based scam detection tool that helps users identify phishing attempts, suspicious links, and scam-style messages in seconds.
+SafeSignal is a web-based scam detection tool that helps users identify phishing attempts, suspicious links, scam-style emails, and social engineering patterns.
 
-It analyzes input using pattern detection, URL inspection, and risk scoring to give clear, actionable feedback.
+It analyzes input using weighted scoring, URL inspection, and scam-pattern detection to give clear, practical feedback.
 
 ---
 
@@ -10,7 +10,7 @@ It analyzes input using pattern detection, URL inspection, and risk scoring to g
 [Try SafeSignal Live](https://safesignal-7j44.onrender.com)
 
 ## 💻 GitHub Repository
-[View Source Code](https://github.com/austinprinsloo32-netizen)
+[View Source Code](https://github.com/austinprinsloo32-netizen/safesignal)
 
 ---
 
@@ -18,16 +18,17 @@ It analyzes input using pattern detection, URL inspection, and risk scoring to g
 
 ### 1. Text Scanner
 - Detects scam phrases and social engineering patterns
-- Flags urgency, credential requests, and financial traps
-- Provides a risk score and explanation
+- Flags urgency, credential requests, and money-related traps
+- Provides a risk score, reasons, and advice
 
 ### 2. URL Scanner
-- Analyzes domains and link structure
+- Analyzes suspicious domains and link structure
 - Detects:
   - shortened URLs
   - suspicious keywords
   - excessive subdomains
   - IP-based links
+  - unusual domain traits
 - Returns a clear risk verdict
 
 ### 3. Email Scanner
@@ -40,33 +41,44 @@ It analyzes input using pattern detection, URL inspection, and risk scoring to g
   - scam-style subject lines
   - phishing language in email content
 
-### 4. Risk Scoring System
-- Combines multiple detection signals
+### 4. Screenshot Scanner (OCR)
+- Upload screenshots of suspicious messages or emails
+- Extracts text using OCR
+- Runs scam analysis on the extracted text
+
+> Note: OCR support may vary by deployment environment.
+
+### 5. Weighted Risk Scoring
+- Combines multiple scam indicators using severity-based weights
 - Outputs:
   - Likely Safe ✅
   - Suspicious ⚠️
   - High Risk 🚨
 
-### 5. Educational Feedback
-- Explains *why* something looks suspicious
-- Helps users learn scam patterns
+### 6. Educational Insights
+- Explains why content looks suspicious
+- Highlights tactics like:
+  - urgency pressure
+  - authority impersonation
+  - credential harvesting
+  - payment extraction
 
-### 6. User Experience
+### 7. User Experience
 - Clean, modern UI
-- Mode switching (Text / URL / Email)
-- Demo examples
-- Local scan history
+- Multiple scan modes
+- Built-in demo examples
+- Browser-based recent scan history
 - Copy-to-clipboard results
 
 ---
 
 ## 🧠 Why I Built This
 
-Scams, phishing, and fake job offers are increasingly common — especially across messaging apps, email, and social media.
+Scams, phishing, and fake job offers are increasingly common across messaging apps, email, and social platforms.
 
 SafeSignal was built to:
-- help everyday users quickly assess risk
-- reduce the chances of falling for scams
+- help everyday users quickly assess suspicious content
+- reduce the risk of falling for scams
 - teach users how scam tactics work
 
 ---
@@ -75,9 +87,10 @@ SafeSignal was built to:
 
 - **Backend:** Python, Flask
 - **Frontend:** HTML, CSS, JavaScript
+- **OCR:** pytesseract, Pillow
 - **Other:**
-  - LocalStorage (scan history)
-  - Fetch API (frontend → backend communication)
+  - LocalStorage
+  - Fetch API
 
 ---
 
@@ -85,5 +98,5 @@ SafeSignal was built to:
 
 ### 1. Clone the repository
 ```bash
-git clone https://github.com/austinprinsloo32-netizen/safesignal
+git clone https://github.com/austinprinsloo32-netizen/safesignal.git
 cd safesignal
