@@ -2,10 +2,9 @@ import re
 from io import BytesIO
 from urllib.parse import urlparse
 
-import pytesseract
-from PIL import Image
-
-pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+import os
+import requests
+from PIL import Image, ImageOps, ImageFilter
 
 WEIGHTS = {
     "weak": 1,
@@ -439,15 +438,83 @@ def analyze_email(sender, subject, body):
     }
 
 
+class OCRServiceError(Exception):
+    pass
+
+
+def preprocess_image_for_ocr(image_bytes):
+    image = Image.open(BytesIO(image_bytes)).convert("L")
+    image = ImageOps.autocontrast(image)
+    image = image.filter(ImageFilter.SHARPEN)
+
+    output = BytesIO()
+    image.save(output, format="PNG")
+    output.seek(0)
+    return output
+
+
 def extract_text_from_image(image_file):
+    api_key = os.getenv("OCR_SPACE_API_KEY")
+
+    if not api_key:
+        raise OCRServiceError("OCR_SPACE_API_KEY is missing.")
+
     image_bytes = image_file.read()
-    image = Image.open(BytesIO(image_bytes))
-    text = pytesseract.image_to_string(image)
-    return text.strip()
+    processed_image = preprocess_image_for_ocr(image_bytes)
+
+    try:
+        response = requests.post(
+            "https://api.ocr.space/parse/image",
+            files={"file": ("screenshot.png", processed_image, "image/png")},
+            data={
+                "language": "eng",
+                "isOverlayRequired": False,
+                "OCREngine": 2,
+                "scale": True
+            },
+            headers={"apikey": api_key},
+            timeout=30
+        )
+    except requests.RequestException as e:
+        raise OCRServiceError(f"OCR request failed: {e}")
+
+    if response.status_code != 200:
+        raise OCRServiceError(f"OCR API returned status code {response.status_code}")
+
+    try:
+        result = response.json()
+    except ValueError:
+        raise OCRServiceError("OCR API returned invalid JSON.")
+
+    if result.get("IsErroredOnProcessing"):
+        error_message = result.get("ErrorMessage") or result.get("ErrorDetails") or "Unknown OCR error"
+        raise OCRServiceError(str(error_message))
+
+    parsed_results = result.get("ParsedResults", [])
+    if not parsed_results:
+        return ""
+
+    extracted_text = "\n".join(
+        item.get("ParsedText", "")
+        for item in parsed_results
+        if item.get("ParsedText")
+    ).strip()
+
+    return extracted_text
 
 
 def analyze_image_file(image_file):
-    extracted_text = extract_text_from_image(image_file)
+    try:
+        extracted_text = extract_text_from_image(image_file)
+    except OCRServiceError as e:
+        return {
+            "risk": "OCR Error",
+            "score": 0,
+            "reasons": [f"OCR failed: {str(e)}"],
+            "insights": [],
+            "advice": "Please try again in a moment or use a clearer screenshot.",
+            "extracted_text": ""
+        }
 
     if not extracted_text:
         return {
