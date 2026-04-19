@@ -238,16 +238,30 @@ ${(data.reasons || []).map(r => `- ${r}`).join("\n")}`;
             <div class="score-pill">${data.score} risk points detected</div>
 
             <div class="section-label">Advice</div>
-            <div class="advice-box">${data.advice}</div>
+<div class="advice-box">${data.advice}</div>
 
-            <div class="section-label">Reasons</div>
-            ${
-                data.reasons && data.reasons.length
-                    ? `<ul class="reasons-list">
-                        ${data.reasons.map(reason => `<li>${reason}</li>`).join("")}
-                       </ul>`
-                    : `<div class="empty-state">No specific warning signals were found.</div>`
-            }
+<div class="section-label">Reasons</div>
+${
+    data.reasons && data.reasons.length
+        ? `<ul class="reasons-list">
+            ${data.reasons.map(reason => `<li>${reason}</li>`).join("")}
+           </ul>`
+        : `<div class="empty-state">No specific warning signals were found.</div>`
+}
+
+<div class="section-label">Insights</div>
+${
+    data.insights && data.insights.length
+        ? `<div class="insights-list">
+            ${data.insights.map(insight => `
+                <div class="insight-card">
+                    <div class="insight-title">${insight.title}</div>
+                    <div class="insight-text">${insight.explanation}</div>
+                </div>
+            `).join("")}
+           </div>`
+        : `<div class="empty-state">No educational insights available for this scan.</div>`
+}
 
             <div class="action-row">
                 <button class="action-chip" onclick='copyResult(${JSON.stringify(copyText)})'>Copy result</button>

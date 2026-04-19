@@ -538,3 +538,28 @@ input:hover {
         grid-template-columns: 1fr;
     }
 }
+.insights-list {
+    display: grid;
+    gap: 10px;
+    margin-top: 4px;
+}
+
+.insight-card {
+    background: rgba(15, 23, 42, 0.75);
+    border: 1px solid rgba(148, 163, 184, 0.10);
+    border-radius: 12px;
+    padding: 12px;
+}
+
+.insight-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #f8fafc;
+    margin-bottom: 6px;
+}
+
+.insight-text {
+    color: #cbd5e1;
+    line-height: 1.5;
+    font-size: 14px;
+}
