@@ -2,7 +2,7 @@
 
 SafeSignal is a web-based scam detection tool that helps users identify phishing attempts, suspicious links, scam-style emails, and social engineering patterns.
 
-It analyzes input using weighted scoring, URL inspection, and scam-pattern detection to give clear, practical feedback.
+It analyzes input using weighted scoring, URL inspection, and scam-pattern detection to give clear, practical feedback — now including screenshot analysis in production.
 
 ---
 
@@ -21,6 +21,8 @@ It analyzes input using weighted scoring, URL inspection, and scam-pattern detec
 - Flags urgency, credential requests, and money-related traps
 - Provides a risk score, reasons, and advice
 
+---
+
 ### 2. URL Scanner
 - Analyzes suspicious domains and link structure
 - Detects:
@@ -30,6 +32,8 @@ It analyzes input using weighted scoring, URL inspection, and scam-pattern detec
   - IP-based links
   - unusual domain traits
 - Returns a clear risk verdict
+
+---
 
 ### 3. Email Scanner
 - Structured input:
@@ -41,13 +45,15 @@ It analyzes input using weighted scoring, URL inspection, and scam-pattern detec
   - scam-style subject lines
   - phishing language in email content
 
-### 4. Screenshot Scanner (OCR)
-- Upload screenshots of suspicious messages or emails
-- Extracts text using OCR
-- Runs scam analysis on the extracted text
+---
 
-> Note: Screenshot OCR is currently available in local development and is not yet fully supported in the live deployment environment.
-> Updated OCR deployment
+### 4. Screenshot Scanner (OCR) ✅ NEW
+- Upload screenshots of suspicious messages (WhatsApp, SMS, email, etc.)
+- Extracts text using **cloud-based OCR (OCR.space API)**
+- Runs full scam analysis on extracted content
+- Works in both **local and production environments**
+
+---
 
 ### 5. Weighted Risk Scoring
 - Combines multiple scam indicators using severity-based weights
@@ -56,13 +62,17 @@ It analyzes input using weighted scoring, URL inspection, and scam-pattern detec
   - Suspicious ⚠️
   - High Risk 🚨
 
+---
+
 ### 6. Educational Insights
-- Explains why content looks suspicious
+- Explains *why* content looks suspicious
 - Highlights tactics like:
   - urgency pressure
   - authority impersonation
   - credential harvesting
   - payment extraction
+
+---
 
 ### 7. User Experience
 - Clean, modern UI
@@ -88,7 +98,8 @@ SafeSignal was built to:
 
 - **Backend:** Python, Flask
 - **Frontend:** HTML, CSS, JavaScript
-- **OCR:** pytesseract, Pillow
+- **OCR:** OCR.space API (cloud-based), Pillow (image preprocessing)
+- **Deployment:** Render
 - **Other:**
   - LocalStorage
   - Fetch API
