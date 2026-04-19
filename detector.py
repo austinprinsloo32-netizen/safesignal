@@ -502,7 +502,22 @@ def extract_text_from_image(image_file):
 
     return extracted_text
 
+def estimate_ocr_confidence(text):
+    if not text:
+        return 0.0
 
+    text = text.strip()
+
+    length_score = min(len(text) / 200, 1.0)
+
+    weird_chars = len(re.findall(r'[^a-zA-Z0-9\s.,!?@:/%()\-]', text))
+    weird_ratio = weird_chars / max(len(text), 1)
+
+    confidence = length_score * (1 - weird_ratio)
+    confidence = max(0.0, min(confidence, 1.0))
+
+    return round(confidence, 2)
+    
 def analyze_image_file(image_file):
     try:
         extracted_text = extract_text_from_image(image_file)
