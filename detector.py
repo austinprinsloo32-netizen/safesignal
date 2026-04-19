@@ -1,5 +1,11 @@
 import re
+from io import BytesIO
 from urllib.parse import urlparse
+
+import pytesseract
+from PIL import Image
+
+pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 
 WEIGHTS = {
     "weak": 1,
@@ -431,3 +437,28 @@ def analyze_email(sender, subject, body):
         "sender": sender,
         "subject": subject
     }
+
+
+def extract_text_from_image(image_file):
+    image_bytes = image_file.read()
+    image = Image.open(BytesIO(image_bytes))
+    text = pytesseract.image_to_string(image)
+    return text.strip()
+
+
+def analyze_image_file(image_file):
+    extracted_text = extract_text_from_image(image_file)
+
+    if not extracted_text:
+        return {
+            "risk": "No Text Found",
+            "score": 0,
+            "reasons": ["No readable text could be extracted from the image."],
+            "insights": [],
+            "advice": "Try a clearer screenshot with larger text and better contrast.",
+            "extracted_text": ""
+        }
+
+    result = analyze_text(extracted_text)
+    result["extracted_text"] = extracted_text
+    return result

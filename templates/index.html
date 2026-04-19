@@ -18,7 +18,7 @@
         <div>
           <h1>SafeSignal</h1>
           <p class="subtitle">
-            Detect suspicious messages, risky links, and scam-style email content in seconds.
+            Detect suspicious messages, risky links, scam-style email content, and screenshot text in seconds.
           </p>
         </div>
       </div>
@@ -26,7 +26,7 @@
       <section class="top-strip">
         <div class="mini-stat">
           <span class="mini-stat-label">Modes</span>
-          <strong>Text · URL · Email</strong>
+          <strong>Text · URL · Email · Screenshot</strong>
         </div>
         <div class="mini-stat">
           <span class="mini-stat-label">Local Status</span>
@@ -39,6 +39,7 @@
         <option value="text">Text Scanner</option>
         <option value="url">URL Scanner</option>
         <option value="email">Email Scanner</option>
+        <option value="image">Screenshot Scanner</option>
       </select>
 
       <section id="singleInputSection">
@@ -75,6 +76,14 @@
           id="emailBody"
           placeholder="Paste the email message here..."
         ></textarea>
+      </section>
+
+      <section id="imageSection" class="hidden">
+        <label for="imageInput" class="label">Upload screenshot</label>
+        <input id="imageInput" type="file" accept="image/*" />
+        <p class="helper-text">
+          Upload a screenshot of a suspicious message, email, or social media post.
+        </p>
       </section>
 
       <div class="demo-buttons">

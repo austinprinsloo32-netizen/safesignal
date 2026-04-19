@@ -1,12 +1,12 @@
 function getRiskClass(score) {
-    if (score >= 8) return "high";
-    if (score >= 4) return "medium";
+    if (score >= 15) return "high";
+    if (score >= 8) return "medium";
     return "low";
 }
 
 function getRiskIcon(score) {
-    if (score >= 8) return "🚨";
-    if (score >= 4) return "⚠️";
+    if (score >= 15) return "🚨";
+    if (score >= 8) return "⚠️";
     return "✅";
 }
 
@@ -14,20 +14,28 @@ function handleModeChange() {
     const mode = document.getElementById("scanMode").value;
     const singleInputSection = document.getElementById("singleInputSection");
     const emailSection = document.getElementById("emailSection");
+    const imageSection = document.getElementById("imageSection");
     const label = document.getElementById("inputLabel");
     const textArea = document.getElementById("inputText");
 
     if (mode === "url") {
         singleInputSection.classList.remove("hidden");
         emailSection.classList.add("hidden");
+        imageSection.classList.add("hidden");
         label.textContent = "Paste a URL";
         textArea.placeholder = "Example: http://paypa1-login-secure.xyz";
     } else if (mode === "email") {
         singleInputSection.classList.add("hidden");
         emailSection.classList.remove("hidden");
+        imageSection.classList.add("hidden");
+    } else if (mode === "image") {
+        singleInputSection.classList.add("hidden");
+        emailSection.classList.add("hidden");
+        imageSection.classList.remove("hidden");
     } else {
         singleInputSection.classList.remove("hidden");
         emailSection.classList.add("hidden");
+        imageSection.classList.add("hidden");
         label.textContent = "Paste a message or link";
         textArea.placeholder = "Example: URGENT! Your bank account is suspended...";
     }
@@ -69,6 +77,8 @@ function clearAll() {
     const result = document.getElementById("result");
 
     document.getElementById("inputText").value = "";
+    document.getElementById("imageInput").value = "";
+
     const emailSender = document.getElementById("emailSender");
     const emailSubject = document.getElementById("emailSubject");
     const emailBody = document.getElementById("emailBody");
@@ -134,9 +144,11 @@ async function checkScam() {
     const sender = document.getElementById("emailSender").value.trim();
     const subject = document.getElementById("emailSubject").value.trim();
     const body = document.getElementById("emailBody").value.trim();
+    const imageInput = document.getElementById("imageInput");
 
     let payload = {};
     let historyText = "";
+    let useFormData = false;
 
     if (mode === "email") {
         if (!sender && !subject && !body) {
@@ -174,6 +186,26 @@ async function checkScam() {
         };
 
         historyText = text;
+    } else if (mode === "image") {
+        const file = imageInput.files[0];
+
+        if (!file) {
+            result.classList.remove("hidden");
+            result.innerHTML = `
+                <div class="empty-state">
+                    Please upload a screenshot before analyzing.
+                </div>
+            `;
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append("mode", "image");
+        formData.append("image", file);
+
+        payload = formData;
+        historyText = `Screenshot scan: ${file.name}`;
+        useFormData = true;
     } else {
         if (!text) {
             result.classList.remove("hidden");
@@ -203,13 +235,20 @@ async function checkScam() {
     `;
 
     try {
-        const response = await fetch("/analyze", {
-            method: "POST",
-            headers: {
+        const fetchOptions = {
+            method: "POST"
+        };
+
+        if (useFormData) {
+            fetchOptions.body = payload;
+        } else {
+            fetchOptions.headers = {
                 "Content-Type": "application/json"
-            },
-            body: JSON.stringify(payload)
-        });
+            };
+            fetchOptions.body = JSON.stringify(payload);
+        }
+
+        const response = await fetch("/analyze", fetchOptions);
 
         if (!response.ok) {
             throw new Error("Server returned an error.");
@@ -234,34 +273,41 @@ ${(data.reasons || []).map(r => `- ${r}`).join("\n")}`;
                 </span>
             </div>
 
+            ${
+                data.extracted_text !== undefined
+                    ? `<div class="section-label">Extracted Text</div>
+                       <div class="extracted-box">${data.extracted_text || "No text extracted."}</div>`
+                    : ``
+            }
+
             <div class="section-label">Score</div>
             <div class="score-pill">${data.score} risk points detected</div>
 
             <div class="section-label">Advice</div>
-<div class="advice-box">${data.advice}</div>
+            <div class="advice-box">${data.advice}</div>
 
-<div class="section-label">Reasons</div>
-${
-    data.reasons && data.reasons.length
-        ? `<ul class="reasons-list">
-            ${data.reasons.map(reason => `<li>${reason}</li>`).join("")}
-           </ul>`
-        : `<div class="empty-state">No specific warning signals were found.</div>`
-}
+            <div class="section-label">Reasons</div>
+            ${
+                data.reasons && data.reasons.length
+                    ? `<ul class="reasons-list">
+                        ${data.reasons.map(reason => `<li>${reason}</li>`).join("")}
+                       </ul>`
+                    : `<div class="empty-state">No specific warning signals were found.</div>`
+            }
 
-<div class="section-label">Insights</div>
-${
-    data.insights && data.insights.length
-        ? `<div class="insights-list">
-            ${data.insights.map(insight => `
-                <div class="insight-card">
-                    <div class="insight-title">${insight.title}</div>
-                    <div class="insight-text">${insight.explanation}</div>
-                </div>
-            `).join("")}
-           </div>`
-        : `<div class="empty-state">No educational insights available for this scan.</div>`
-}
+            <div class="section-label">Insights</div>
+            ${
+                data.insights && data.insights.length
+                    ? `<div class="insights-list">
+                        ${data.insights.map(insight => `
+                            <div class="insight-card">
+                                <div class="insight-title">${insight.title}</div>
+                                <div class="insight-text">${insight.explanation}</div>
+                            </div>
+                        `).join("")}
+                       </div>`
+                    : `<div class="empty-state">No educational insights available for this scan.</div>`
+            }
 
             <div class="action-row">
                 <button class="action-chip" onclick='copyResult(${JSON.stringify(copyText)})'>Copy result</button>
