@@ -41,6 +41,11 @@ SAFE_DOMAINS_HINTS = {
     "gov.za", "sars.gov.za", "bank.co.za"
 }
 
+SUSPICIOUS_URL_KEYWORDS = {
+    "verify", "secure", "login", "claim", "reward", "update",
+    "bank", "wallet", "confirm", "password", "account", "pay"
+}
+
 
 def extract_urls(text):
     return re.findall(r'https?://[^\s]+', text)
@@ -61,6 +66,17 @@ def domain_from_url(url):
         return parsed.netloc.lower().replace("www.", "")
     except Exception:
         return ""
+
+
+def extract_root_domain(domain):
+    parts = domain.split(".")
+    if len(parts) >= 2:
+        return ".".join(parts[-2:])
+    return domain
+
+
+def is_ip_address(domain):
+    return bool(re.fullmatch(r"\d{1,3}(?:\.\d{1,3}){3}", domain))
 
 
 def analyze_patterns(text_lower):
@@ -156,7 +172,6 @@ def analyze_text(text):
     score += style_score
     reasons.extend(style_reasons)
 
-    # Reduce repeated reasons while preserving order
     unique_reasons = list(dict.fromkeys(reasons))
 
     risk, advice = classify_risk(score)
@@ -166,4 +181,86 @@ def analyze_text(text):
         "score": score,
         "reasons": unique_reasons,
         "advice": advice
+    }
+
+
+def analyze_single_url(url):
+    if not url or not url.strip():
+        return {
+            "risk": "Invalid Input",
+            "score": 0,
+            "reasons": ["No URL was provided."],
+            "advice": "Paste a full link to analyze it."
+        }
+
+    original_url = url.strip()
+
+    if not original_url.startswith(("http://", "https://")):
+        original_url = "http://" + original_url
+
+    parsed = urlparse(original_url)
+    domain = parsed.netloc.lower().replace("www.", "")
+    path = parsed.path.lower()
+
+    if not domain:
+        return {
+            "risk": "Invalid Input",
+            "score": 0,
+            "reasons": ["Could not read a valid domain from that URL."],
+            "advice": "Make sure the link is in a valid format."
+        }
+
+    score = 0
+    reasons = []
+
+    root_domain = extract_root_domain(domain)
+
+    if domain in SHORTENER_DOMAINS or root_domain in SHORTENER_DOMAINS:
+        score += 3
+        reasons.append(f"Uses shortened or masked link: '{domain}'")
+
+    if is_ip_address(domain):
+        score += 3
+        reasons.append("Uses an IP address instead of a normal domain")
+
+    if "@" in original_url:
+        score += 2
+        reasons.append("URL contains '@', which can hide the true destination")
+
+    if "xn--" in domain:
+        score += 3
+        reasons.append("Domain contains punycode, which can be used for lookalike scams")
+
+    if domain.count(".") >= 3:
+        score += 2
+        reasons.append("Domain uses many subdomains, which can be suspicious")
+
+    if any(char.isdigit() for char in domain):
+        score += 1
+        reasons.append(f"Domain contains numbers: '{domain}'")
+
+    if domain.count("-") >= 2:
+        score += 1
+        reasons.append("Domain uses many hyphens, which is common in phishing links")
+
+    if not any(hint in domain for hint in SAFE_DOMAINS_HINTS):
+        combined = f"{domain}{path}"
+        for keyword in SUSPICIOUS_URL_KEYWORDS:
+            if keyword in combined:
+                score += 2
+                reasons.append(f"URL contains suspicious keyword: '{keyword}'")
+
+    risk, advice = classify_risk(score)
+
+    unique_reasons = list(dict.fromkeys(reasons))
+
+    if not unique_reasons:
+        unique_reasons = ["No strong structural scam indicators were found in the URL."]
+
+    return {
+        "risk": risk,
+        "score": score,
+        "reasons": unique_reasons,
+        "advice": advice,
+        "domain": domain
     }

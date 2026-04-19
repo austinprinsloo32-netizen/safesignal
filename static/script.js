@@ -10,13 +10,28 @@ function getRiskIcon(score) {
     return "✅";
 }
 
+function handleModeChange() {
+    const mode = document.getElementById("scanMode").value;
+    const label = document.getElementById("inputLabel");
+    const textArea = document.getElementById("inputText");
+
+    if (mode === "url") {
+        label.textContent = "Paste a URL";
+        textArea.placeholder = "Example: http://paypa1-login-secure.xyz";
+    } else {
+        label.textContent = "Paste a message or link";
+        textArea.placeholder = "Example: URGENT! Your bank account is suspended...";
+    }
+}
+
 function loadExample(type) {
     const textArea = document.getElementById("inputText");
 
     const examples = {
         bank: "URGENT! Your bank account is suspended. Verify now using your OTP at http://bit.ly/test",
         job: "Congratulations, your job offer has been approved. Pay a registration fee today to secure your position.",
-        safe: "Hi Austin, just confirming our meeting for tomorrow at 10:00."
+        safe: "Hi Austin, just confirming our meeting for tomorrow at 10:00.",
+        url: "http://paypa1-login-secure.xyz/reset-account"
     };
 
     textArea.value = examples[type] || "";
@@ -78,6 +93,7 @@ async function checkScam() {
     const btnText = button.querySelector(".btn-text");
     const btnLoader = button.querySelector(".btn-loader");
 
+    const mode = document.getElementById("scanMode").value;
     const text = textArea.value.trim();
 
     if (!text) {
@@ -96,17 +112,31 @@ async function checkScam() {
 
     result.classList.remove("hidden");
     result.innerHTML = `
-        <div class="empty-state">Checking message for scam signals...</div>
+        <div class="empty-state">Checking for scam signals...</div>
     `;
 
     try {
-    const response = await fetch("/analyze", {
-    method: "POST",
-    headers: {
-        "Content-Type": "application/json"
-    },
-    body: JSON.stringify({ text })
-});
+        let payload = {};
+
+        if (mode === "url") {
+            payload = {
+                mode: "url",
+                url: text
+            };
+        } else {
+            payload = {
+                mode: "text",
+                text: text
+            };
+        }
+
+        const response = await fetch("/analyze", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(payload)
+        });
 
         if (!response.ok) {
             throw new Error("Server returned an error.");
@@ -156,6 +186,7 @@ ${(data.reasons || []).map(r => `- ${r}`).join("\n")}`;
             risk: data.risk,
             score: data.score
         });
+
     } catch (error) {
         result.innerHTML = `
             <div class="error-state">

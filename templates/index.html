@@ -23,7 +23,13 @@
         </div>
       </div>
 
-      <label for="inputText" class="label">Paste a message or link</label>
+      <label for="scanMode" class="label">Scan mode</label>
+      <select id="scanMode" onchange="handleModeChange()">
+        <option value="text">Text Scanner</option>
+        <option value="url">URL Scanner</option>
+      </select>
+
+      <label for="inputText" class="label" id="inputLabel">Paste a message or link</label>
       <textarea
         id="inputText"
         placeholder="Example: URGENT! Your bank account is suspended. Verify now..."
@@ -33,6 +39,7 @@
         <button class="demo-btn" onclick="loadExample('bank')">Bank scam</button>
         <button class="demo-btn" onclick="loadExample('job')">Job scam</button>
         <button class="demo-btn" onclick="loadExample('safe')">Safe message</button>
+        <button class="demo-btn" onclick="loadExample('url')">Suspicious URL</button>
       </div>
 
       <div class="actions two-buttons">
