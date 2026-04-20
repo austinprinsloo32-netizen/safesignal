@@ -177,7 +177,10 @@ def analyze_patterns(text_lower):
 
     for category, phrases in SUSPICIOUS_PATTERNS.items():
         for phrase in phrases:
-            if phrase in text_lower:
+            phrase_lower = phrase.lower()
+
+            # Use stricter matching for short terms like "pin", "otp", "bank"
+            if re.search(rf'\b{re.escape(phrase_lower)}\b', text_lower):
                 if category in ["urgency", "job_scam", "prize_scam"]:
                     score += WEIGHTS["weak"]
                 elif category in ["credentials", "money"]:

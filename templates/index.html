@@ -18,7 +18,7 @@
         <div>
           <h1>SafeSignal</h1>
           <p class="subtitle">
-            Detect suspicious messages, risky links, scam-style email content, and screenshot text in seconds.
+            Check messages, links, emails, and screenshots for scam signals in seconds.
           </p>
         </div>
       </div>
@@ -29,8 +29,8 @@
           <strong>Text · URL · Email · Screenshot</strong>
         </div>
         <div class="mini-stat">
-          <span class="mini-stat-label">Local Status</span>
-          <strong>Ready</strong>
+          <span class="mini-stat-label">Status</span>
+          <strong>Live</strong>
         </div>
       </section>
 
@@ -105,7 +105,85 @@
         </button>
       </div>
 
-      <section id="result" class="result-card hidden"></section>
+      <section id="result" class="result-card hidden">
+        <div class="result-top">
+          <div>
+            <p id="resultBadge" class="result-badge">Analysis Result</p>
+            <h2 id="resultTitle" class="result-title">Waiting for scan</h2>
+            <p id="resultSummary" class="result-summary">
+              Run a scan to see the result breakdown.
+            </p>
+          </div>
+
+          <div class="result-score-box">
+            <span class="score-label">Score</span>
+            <strong id="resultScore">0</strong>
+            <span class="score-sub">risk points</span>
+          </div>
+        </div>
+
+        <div class="result-meta">
+          <div class="meta-pill">
+            <span class="meta-label">Confidence</span>
+            <strong id="resultConfidence">—</strong>
+          </div>
+          <div class="meta-pill">
+            <span class="meta-label">Mode</span>
+            <strong id="resultMode">—</strong>
+          </div>
+        </div>
+
+        <div id="ocrMetaBlock" class="result-subsection hidden">
+          <h3>OCR Details</h3>
+          <div class="info-list">
+            <div><strong>OCR Quality:</strong> <span id="ocrQualityText">—</span></div>
+            <div><strong>OCR Confidence:</strong> <span id="ocrConfidenceText">—</span></div>
+          </div>
+        </div>
+
+        <div id="extractedTextBlock" class="result-subsection hidden">
+          <h3>Extracted Text</h3>
+          <div id="extractedText" class="text-preview"></div>
+        </div>
+
+        <div id="urlsBlock" class="result-subsection hidden">
+          <h3>Detected URLs</h3>
+          <div id="detectedUrls" class="tag-list"></div>
+        </div>
+
+        <div id="phonesBlock" class="result-subsection hidden">
+          <h3>Detected Phone Numbers</h3>
+          <div id="detectedPhones" class="tag-list"></div>
+        </div>
+
+        <div class="result-grid">
+          <div class="result-subsection">
+            <h3>Why this might be risky</h3>
+            <ul id="riskReasons" class="reason-list">
+              <li>No risk signals yet.</li>
+            </ul>
+          </div>
+
+          <div class="result-subsection">
+            <h3>Why this looks legitimate</h3>
+            <ul id="legitReasons" class="reason-list">
+              <li>No legitimacy signals yet.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="result-subsection">
+          <h3>Advice</h3>
+          <p id="resultAdvice" class="advice-text"></p>
+        </div>
+
+        <div class="result-subsection">
+          <h3>Insights</h3>
+          <div id="insightsList" class="insight-list">
+            <p class="empty-state">No educational insights available for this scan.</p>
+          </div>
+        </div>
+      </section>
 
       <section class="history-section">
         <div class="history-header">
