@@ -102,7 +102,8 @@ INSIGHT_MAP = {
 
 
 def extract_urls(text):
-    return re.findall(r'https?://[^\s]+', text)
+    pattern = r'(https?://[^\s]+|www\.[^\s]+)'
+    return re.findall(pattern, text)
 
 
 def count_uppercase_words(text):
@@ -556,8 +557,34 @@ def analyze_image_file(image_file):
     else:
         ocr_quality = "Low"
 
+    extracted_urls = extract_urls(extracted_text)
+
+    phone_pattern = r'(?:\+27|27|0)(?:[\s\-]?\d){8,10}'
+    raw_phones = re.findall(phone_pattern, extracted_text)
+
+    extracted_phones = []
+    seen_phones = set()
+
+    for phone in raw_phones:
+        cleaned = re.sub(r'\D', '', phone)
+
+        if len(cleaned) != 10:
+            continue
+
+        if cleaned.startswith((
+            "060","061","062","063","064","065","066","067","068",
+            "071","072","073","074","076","078","079",
+            "081","082","083","084",
+            "011","021","031","041","051","086"
+        )):
+            if cleaned not in seen_phones:
+                seen_phones.add(cleaned)
+                extracted_phones.append(cleaned)
+                
     result["extracted_text"] = extracted_text
     result["ocr_confidence"] = ocr_confidence
     result["ocr_quality"] = ocr_quality
+    result["extracted_urls"] = extracted_urls
+    result["extracted_phones"] = extracted_phones
 
     return result

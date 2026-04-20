@@ -281,8 +281,26 @@ ${(data.reasons || []).map(r => `- ${r}`).join("\n")}`;
 
             <div class="section-label">OCR Quality</div>
             <div class="score-pill">
-                ${data.ocr_quality || "Unknown"} (${data.ocr_confidence ?? 0})
+                ${data.ocr_quality || "Unknown"} (${(data.ocr_confidence ?? 0).toFixed(2)})
             </div>
+
+            <div class="section-label">Detected URLs</div>
+            ${
+                data.extracted_urls && data.extracted_urls.length
+                    ? `<ul class="reasons-list">
+                        ${data.extracted_urls.map(url => `<li>${url}</li>`).join("")}
+                       </ul>`
+                    : `<div class="empty-state">No URLs detected in the screenshot.</div>`
+            }
+
+            <div class="section-label">Detected Phone Numbers</div>
+            ${
+                data.extracted_phones && data.extracted_phones.length
+                    ? `<ul class="reasons-list">
+                        ${data.extracted_phones.map(phone => `<li>${phone}</li>`).join("")}
+                       </ul>`
+                    : `<div class="empty-state">No phone numbers detected in the screenshot.</div>`
+            }
           `
         : ``
 }
