@@ -243,36 +243,99 @@ def classify_risk(score):
 def analyze_text(text):
     text_lower = text.lower()
 
-    score = 0
+    base_score = 0
+    combo_bonus = 0
+    legit_bonus = 0
+
     reasons = []
+    legit_reasons = []
     categories_found = []
 
+    # -------------------
+    # Existing scoring (UNCHANGED)
+    # -------------------
     pattern_score, pattern_reasons, pattern_categories = analyze_patterns(text_lower)
-    score += pattern_score
+    base_score += pattern_score
     reasons.extend(pattern_reasons)
     categories_found.extend(pattern_categories)
 
     urls = extract_urls(text)
     url_score, url_reasons, url_categories = analyze_urls(urls)
-    score += url_score
+    base_score += url_score
     reasons.extend(url_reasons)
     categories_found.extend(url_categories)
 
     style_score, style_reasons, style_categories = analyze_style(text)
-    score += style_score
+    base_score += style_score
     reasons.extend(style_reasons)
     categories_found.extend(style_categories)
 
+    # -------------------
+    # NEW: Combo logic
+    # -------------------
+    has_urgency = "urgency" in categories_found
+    has_money = "money" in categories_found
+    has_credentials = "credentials" in categories_found
+    has_url = len(urls) > 0
+
+    if has_urgency and has_money:
+        combo_bonus += 3
+        reasons.append("Combo: urgency + payment request")
+
+    if has_urgency and has_credentials:
+        combo_bonus += 4
+        reasons.append("Combo: urgency + credential request")
+
+    if has_url and has_credentials:
+        combo_bonus += 4
+        reasons.append("Combo: link + credential request")
+
+    # -------------------
+    # NEW: Legitimate document detection
+    # -------------------
+    doc_titles = ["invoice", "medical certificate", "statement", "receipt", "quotation"]
+
+    if any(title in text_lower for title in doc_titles):
+        legit_bonus += 3
+        legit_reasons.append("Recognized document format")
+
+    if "@" in text:
+        legit_bonus += 2
+        legit_reasons.append("Email/contact info present")
+
+    address_words = ["street", "road", "avenue", "suite", "private bag", "po box"]
+    if any(word in text_lower for word in address_words):
+        legit_bonus += 3
+        legit_reasons.append("Physical address detected")
+
+    # IMPORTANT: phone numbers should NOT increase risk
+    # Only count them as legit signal
+    if re.search(r'\b(?:\+27|27|0)\d{9}\b', text.replace(" ", "")):
+        legit_bonus += 2
+        legit_reasons.append("Phone number present")
+
+    # -------------------
+    # Final score
+    # -------------------
+    final_score = base_score + combo_bonus - legit_bonus
+    final_score = max(0, min(100, final_score))
+
     unique_reasons = list(dict.fromkeys(reasons))
     insights = generate_insights(categories_found)
-    risk, advice = classify_risk(score)
+    risk, advice = classify_risk(final_score)
 
     return {
         "risk": risk,
-        "score": score,
+        "score": final_score,
         "reasons": unique_reasons,
+        "legit_reasons": legit_reasons,  # NEW
         "insights": insights,
-        "advice": advice
+        "advice": advice,
+        "debug": {  # optional but VERY useful
+            "base_score": base_score,
+            "combo_bonus": combo_bonus,
+            "legit_bonus": legit_bonus
+        }
     }
 
 
