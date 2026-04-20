@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "SafeSignal",
+  "version": "1.0.0",
+  "description": "Check text and links for scam signals using SafeSignal.",
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "SafeSignal"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "permissions": [
+    "contextMenus",
+    "activeTab",
+    "storage",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://safesignal-7j44.onrender.com/*"
+  ]
+}

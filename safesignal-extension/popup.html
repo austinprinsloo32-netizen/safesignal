@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SafeSignal</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <main class="wrap">
+    <div class="top">
+      <div class="logo">🛡️</div>
+      <div>
+        <h1>SafeSignal</h1>
+        <p>Check text or links for scam signals.</p>
+      </div>
+    </div>
+
+    <label for="mode">Scan mode</label>
+    <select id="mode">
+      <option value="text">Text</option>
+      <option value="url">URL</option>
+    </select>
+
+    <label for="content">Paste text or a link</label>
+    <textarea id="content" placeholder="Paste a suspicious message or URL..."></textarea>
+
+    <div class="actions">
+      <button id="analyzeBtn">Analyze</button>
+      <button id="useSelectionBtn" class="secondary">Use selected text</button>
+    </div>
+
+    <section id="result" class="result hidden">
+      <div class="result-head">
+        <h2 id="riskLabel">Waiting</h2>
+        <div id="scoreBox" class="score-box">0</div>
+      </div>
+
+      <p id="advice" class="advice"></p>
+
+      <div class="section">
+        <h3>Why this might be risky</h3>
+        <ul id="reasons"></ul>
+      </div>
+
+      <div class="section">
+        <h3>Why this looks legitimate</h3>
+        <ul id="legitReasons"></ul>
+      </div>
+    </section>
+  </main>
+
+  <script src="popup.js"></script>
+</body>
+</html>
