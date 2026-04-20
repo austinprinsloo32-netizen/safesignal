@@ -288,6 +288,21 @@ def analyze_text(text):
     has_credentials = "credentials" in categories_found
     has_url = len(urls) > 0
 
+    if "job_scam" in categories_found and "money" in categories_found:
+        combo_bonus += 4
+    reasons.append("Combo: job-related message + payment request")
+
+if "prize_scam" in categories_found and "money" in categories_found:
+    combo_bonus += 4
+    reasons.append("Combo: reward/prize language + payment request")
+    if "job_scam" in categories_found and "money" in categories_found and "urgency" in categories_found:
+        combo_bonus += 6
+    reasons.append("Multiple scam-style job signals detected")
+
+if "urgency" in categories_found and "job_scam" in categories_found:
+    combo_bonus += 3
+    reasons.append("Combo: urgency + job-related pressure")
+
     if has_urgency and has_money:
         combo_bonus += 3
         reasons.append("Combo: urgency + payment request")
