@@ -12,6 +12,9 @@ WEIGHTS = {
     "strong": 4,
     "critical": 6
 }
+BRAND_LOOKALIKE_HINTS = [
+    "paypal", "capitec", "fnb", "absa", "nedbank", "sars", "microsoft"
+]
 
 SUSPICIOUS_PATTERNS = {
     "urgency": [
@@ -175,11 +178,6 @@ def analyze_urls(urls):
     reasons = []
     categories_found = []
 
-    if urls:
-        score += WEIGHTS["weak"]
-        reasons.append("Contains link(s), which increases risk")
-        categories_found.append("suspicious_url")
-
     for url in urls:
         domain = domain_from_url(url)
 
@@ -215,19 +213,22 @@ def analyze_style(text):
     uppercase_words = count_uppercase_words(text)
     exclamations = count_exclamations(text)
 
-    if uppercase_words >= 3:
+    # Only count excessive uppercase if there are ALSO exclamation marks
+    # or strong urgency wording in the same text.
+    text_lower = text.lower()
+    has_urgent_words = any(word in text_lower for word in [
+        "urgent", "immediately", "act now", "final warning", "last chance", "suspended"
+    ])
+
+    if uppercase_words >= 5 and (exclamations >= 2 or has_urgent_words):
         score += WEIGHTS["weak"]
-        reasons.append("Uses excessive capitalized words to create pressure")
+        reasons.append("Uses many capitalized words with pressure language")
         categories_found.append("urgency")
 
     if exclamations >= 3:
         score += WEIGHTS["weak"]
         reasons.append("Uses excessive exclamation marks to create urgency")
         categories_found.append("urgency")
-
-    if re.search(r'\b(?:\+27|27|0)\d{9}\b', text.replace(" ", "")):
-        score += WEIGHTS["weak"]
-        reasons.append("Contains phone-number style contact details often seen in scams")
 
     return score, reasons, categories_found
 
@@ -338,7 +339,6 @@ def analyze_text(text):
         }
     }
 
-
 def analyze_single_url(url):
     if not url or not url.strip():
         return {
@@ -373,6 +373,9 @@ def analyze_single_url(url):
 
     root_domain = extract_root_domain(domain)
 
+    # -------------------
+    # Basic checks
+    # -------------------
     if domain in SHORTENER_DOMAINS or root_domain in SHORTENER_DOMAINS:
         score += WEIGHTS["strong"]
         reasons.append(f"Uses shortened or masked link: '{domain}'")
@@ -408,14 +411,55 @@ def analyze_single_url(url):
         reasons.append("Domain uses many hyphens, which is common in phishing links")
         categories_found.append("suspicious_url")
 
-    if not any(hint in domain for hint in SAFE_DOMAINS_HINTS):
-        combined = f"{domain}{path}"
-        for keyword in SUSPICIOUS_URL_KEYWORDS:
-            if keyword in combined:
-                score += WEIGHTS["medium"]
-                reasons.append(f"URL contains suspicious keyword: '{keyword}'")
-                categories_found.append("suspicious_url")
+    # -------------------
+    # Keyword detection
+    # -------------------
+    combined = f"{domain}{path}"
 
+    suspicious_keywords_found = [
+        keyword for keyword in SUSPICIOUS_URL_KEYWORDS
+        if keyword in combined
+    ]
+
+    for keyword in suspicious_keywords_found:
+        score += WEIGHTS["medium"]
+        reasons.append(f"URL contains suspicious keyword: '{keyword}'")
+        categories_found.append("suspicious_url")
+
+    # -------------------
+    # Lookalike detection (FIXED POSITION)
+    # -------------------
+    suspicious_lookalikes = [
+        "paypa1", "micr0soft", "capitec-secure", "fnb-verify", "absa-login"
+    ]
+
+    if any(fake in domain for fake in suspicious_lookalikes):
+        score += WEIGHTS["critical"]
+        reasons.append("Domain appears to imitate a trusted brand")
+        categories_found.append("suspicious_url")
+
+    # -------------------
+    # Combo scoring (FIXED POSITION)
+    # -------------------
+    high_risk_url_flags = 0
+
+    if any(char.isdigit() for char in domain):
+        high_risk_url_flags += 1
+
+    if domain.count("-") >= 2:
+        high_risk_url_flags += 1
+
+    if suspicious_keywords_found:
+        high_risk_url_flags += 1
+
+    if high_risk_url_flags >= 3:
+        score += WEIGHTS["critical"]
+        reasons.append("Multiple phishing-style URL traits detected")
+        categories_found.append("suspicious_url")
+
+    # -------------------
+    # Final output
+    # -------------------
     unique_reasons = list(dict.fromkeys(reasons))
     insights = generate_insights(categories_found)
     risk, advice = classify_risk(score)
@@ -431,7 +475,6 @@ def analyze_single_url(url):
         "advice": advice,
         "domain": domain
     }
-
 
 def analyze_email(sender, subject, body):
     sender = (sender or "").strip()
