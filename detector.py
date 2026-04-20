@@ -6,29 +6,19 @@ import os
 import requests
 from PIL import Image, ImageOps, ImageFilter
 
+
 WEIGHTS = {
     "weak": 1,
     "medium": 2,
     "strong": 4,
     "critical": 6
 }
-BRAND_LOOKALIKE_HINTS = [
-    "paypal", "capitec", "fnb", "absa", "nedbank", "sars", "microsoft"
-]
-BRAND_DOMAINS = {
-    "paypal": ["paypal.com"],
-    "microsoft": ["microsoft.com", "outlook.com", "live.com"],
-    "sars": ["sars.gov.za"],
-    "capitec": ["capitecbank.co.za"],
-    "fnb": ["fnb.co.za"],
-    "absa": ["absa.co.za"],
-    "nedbank": ["nedbank.co.za"],
-    "standard bank": ["standardbank.co.za"],
-}
+
 SUSPICIOUS_PATTERNS = {
     "urgency": [
         "urgent", "immediately", "act now", "last chance", "final warning",
-        "suspended", "expire", "expires today", "limited time", "now now"
+        "suspended", "expire", "expires today", "limited time", "now now",
+        "today only", "pay today", "respond immediately", "before it expires"
     ],
     "credentials": [
         "verify your account", "confirm your account", "password", "otp",
@@ -36,7 +26,9 @@ SUSPICIOUS_PATTERNS = {
     ],
     "money": [
         "payment", "pay now", "deposit", "release fee", "clearance fee",
-        "processing fee", "transfer funds", "claim now", "refund", "cashout"
+        "processing fee", "transfer funds", "claim now", "refund", "cashout",
+        "registration fee", "application fee", "placement fee", "activation fee",
+        "secure your spot", "to secure your spot", "pay today"
     ],
     "impersonation": [
         "bank", "sars", "courier", "customs", "hr department", "recruiter",
@@ -44,7 +36,9 @@ SUSPICIOUS_PATTERNS = {
     ],
     "job_scam": [
         "job offer", "registration fee", "training fee", "work from home",
-        "earn daily", "earn per day", "no experience needed"
+        "earn daily", "earn per day", "no experience needed",
+        "interview fee", "placement fee", "application fee",
+        "approved for the job", "secure your job", "to secure your spot"
     ],
     "prize_scam": [
         "winner", "you have won", "congratulations", "prize", "lottery",
@@ -71,6 +65,17 @@ SUSPICIOUS_URL_KEYWORDS = {
 
 FREE_EMAIL_PROVIDERS = {
     "gmail.com", "yahoo.com", "outlook.com", "hotmail.com", "icloud.com", "proton.me"
+}
+
+BRAND_DOMAINS = {
+    "paypal": ["paypal.com"],
+    "microsoft": ["microsoft.com", "outlook.com", "live.com"],
+    "sars": ["sars.gov.za"],
+    "capitec": ["capitecbank.co.za"],
+    "fnb": ["fnb.co.za"],
+    "absa": ["absa.co.za"],
+    "nedbank": ["nedbank.co.za"],
+    "standard bank": ["standardbank.co.za"],
 }
 
 INSIGHT_MAP = {
@@ -111,6 +116,10 @@ INSIGHT_MAP = {
         "explanation": "The sender information looks inconsistent, manipulative, or unprofessional for a legitimate message."
     }
 }
+
+
+class OCRServiceError(Exception):
+    pass
 
 
 def extract_urls(text):
@@ -222,8 +231,6 @@ def analyze_style(text):
     uppercase_words = count_uppercase_words(text)
     exclamations = count_exclamations(text)
 
-    # Only count excessive uppercase if there are ALSO exclamation marks
-    # or strong urgency wording in the same text.
     text_lower = text.lower()
     has_urgent_words = any(word in text_lower for word in [
         "urgent", "immediately", "act now", "final warning", "last chance", "suspended"
@@ -243,11 +250,12 @@ def analyze_style(text):
 
 
 def classify_risk(score):
-    if score >= 15:
+    if score >= 12:
         return "High Risk 🚨", "This looks like a scam. Do NOT click links, send money, or share personal information."
-    if score >= 8:
+    elif score >= 6:
         return "Suspicious ⚠️", "Be careful. Verify the sender using an official contact channel before taking action."
-    return "Likely Safe ✅", "No strong scam indicators were found, but stay cautious."
+    else:
+        return "Likely Safe ✅", "No strong scam indicators were found, but stay cautious."
 
 
 def analyze_text(text):
@@ -261,9 +269,6 @@ def analyze_text(text):
     legit_reasons = []
     categories_found = []
 
-    # -------------------
-    # Existing scoring (UNCHANGED)
-    # -------------------
     pattern_score, pattern_reasons, pattern_categories = analyze_patterns(text_lower)
     base_score += pattern_score
     reasons.extend(pattern_reasons)
@@ -280,28 +285,13 @@ def analyze_text(text):
     reasons.extend(style_reasons)
     categories_found.extend(style_categories)
 
-    # -------------------
-    # NEW: Combo logic
-    # -------------------
     has_urgency = "urgency" in categories_found
     has_money = "money" in categories_found
     has_credentials = "credentials" in categories_found
     has_url = len(urls) > 0
-
-    if "job_scam" in categories_found and "money" in categories_found:
-        combo_bonus += 4
-    reasons.append("Combo: job-related message + payment request")
-
-if "prize_scam" in categories_found and "money" in categories_found:
-    combo_bonus += 4
-    reasons.append("Combo: reward/prize language + payment request")
-    if "job_scam" in categories_found and "money" in categories_found and "urgency" in categories_found:
-        combo_bonus += 6
-    reasons.append("Multiple scam-style job signals detected")
-
-if "urgency" in categories_found and "job_scam" in categories_found:
-    combo_bonus += 3
-    reasons.append("Combo: urgency + job-related pressure")
+    has_job_scam = "job_scam" in categories_found
+    has_prize_scam = "prize_scam" in categories_found
+    has_impersonation = "impersonation" in categories_found
 
     if has_urgency and has_money:
         combo_bonus += 3
@@ -315,9 +305,22 @@ if "urgency" in categories_found and "job_scam" in categories_found:
         combo_bonus += 4
         reasons.append("Combo: link + credential request")
 
-    # -------------------
-    # NEW: Legitimate document detection
-    # -------------------
+    if has_job_scam and has_money:
+        combo_bonus += 5
+        reasons.append("Combo: job-related message + payment request")
+
+    if has_prize_scam and has_money:
+        combo_bonus += 5
+        reasons.append("Combo: reward/prize language + payment request")
+
+    if has_job_scam and has_urgency:
+        combo_bonus += 3
+        reasons.append("Combo: urgency + job-related pressure")
+
+    if has_impersonation and has_money:
+        combo_bonus += 4
+        reasons.append("Combo: impersonation + payment request")
+
     doc_titles = ["invoice", "medical certificate", "statement", "receipt", "quotation"]
 
     if any(title in text_lower for title in doc_titles):
@@ -333,15 +336,10 @@ if "urgency" in categories_found and "job_scam" in categories_found:
         legit_bonus += 3
         legit_reasons.append("Physical address detected")
 
-    # IMPORTANT: phone numbers should NOT increase risk
-    # Only count them as legit signal
     if re.search(r'\b(?:\+27|27|0)\d{9}\b', text.replace(" ", "")):
         legit_bonus += 2
         legit_reasons.append("Phone number present")
 
-    # -------------------
-    # Final score
-    # -------------------
     final_score = base_score + combo_bonus - legit_bonus
     final_score = max(0, min(100, final_score))
 
@@ -349,19 +347,23 @@ if "urgency" in categories_found and "job_scam" in categories_found:
     insights = generate_insights(categories_found)
     risk, advice = classify_risk(final_score)
 
+    if not unique_reasons:
+        unique_reasons = ["No specific warning signals were found."]
+
     return {
         "risk": risk,
         "score": final_score,
         "reasons": unique_reasons,
-        "legit_reasons": legit_reasons,  # NEW
+        "legit_reasons": legit_reasons,
         "insights": insights,
         "advice": advice,
-        "debug": {  # optional but VERY useful
+        "debug": {
             "base_score": base_score,
             "combo_bonus": combo_bonus,
             "legit_bonus": legit_bonus
         }
     }
+
 
 def analyze_single_url(url):
     if not url or not url.strip():
@@ -397,9 +399,6 @@ def analyze_single_url(url):
 
     root_domain = extract_root_domain(domain)
 
-    # -------------------
-    # Basic checks
-    # -------------------
     if domain in SHORTENER_DOMAINS or root_domain in SHORTENER_DOMAINS:
         score += WEIGHTS["strong"]
         reasons.append(f"Uses shortened or masked link: '{domain}'")
@@ -435,9 +434,6 @@ def analyze_single_url(url):
         reasons.append("Domain uses many hyphens, which is common in phishing links")
         categories_found.append("suspicious_url")
 
-    # -------------------
-    # Keyword detection
-    # -------------------
     combined = f"{domain}{path}"
 
     suspicious_keywords_found = [
@@ -450,9 +446,6 @@ def analyze_single_url(url):
         reasons.append(f"URL contains suspicious keyword: '{keyword}'")
         categories_found.append("suspicious_url")
 
-    # -------------------
-    # Lookalike detection (FIXED POSITION)
-    # -------------------
     suspicious_lookalikes = [
         "paypa1", "micr0soft", "capitec-secure", "fnb-verify", "absa-login"
     ]
@@ -462,9 +455,6 @@ def analyze_single_url(url):
         reasons.append("Domain appears to imitate a trusted brand")
         categories_found.append("suspicious_url")
 
-    # -------------------
-    # Combo scoring (FIXED POSITION)
-    # -------------------
     high_risk_url_flags = 0
 
     if any(char.isdigit() for char in domain):
@@ -481,9 +471,6 @@ def analyze_single_url(url):
         reasons.append("Multiple phishing-style URL traits detected")
         categories_found.append("suspicious_url")
 
-    # -------------------
-    # Final output
-    # -------------------
     unique_reasons = list(dict.fromkeys(reasons))
     insights = generate_insights(categories_found)
     risk, advice = classify_risk(score)
@@ -499,6 +486,7 @@ def analyze_single_url(url):
         "advice": advice,
         "domain": domain
     }
+
 
 def analyze_email(sender, subject, body):
     sender = (sender or "").strip()
@@ -520,9 +508,6 @@ def analyze_email(sender, subject, body):
 
     sender_domain = ""
 
-    # -------------------
-    # Sender checks
-    # -------------------
     if sender:
         sender_lower = sender.lower()
 
@@ -553,9 +538,6 @@ def analyze_email(sender, subject, body):
                 reasons.append("Sender domain contains numbers")
                 categories_found.append("suspicious_sender")
 
-    # -------------------
-    # Subject checks
-    # -------------------
     subject_lower = subject.lower()
     if subject:
         if any(word in subject_lower for word in ["urgent", "verify", "suspended", "winner", "refund", "payment"]):
@@ -563,9 +545,6 @@ def analyze_email(sender, subject, body):
             reasons.append("Subject line uses urgent or scam-style wording")
             categories_found.append("urgency")
 
-    # -------------------
-    # Brand claim detection
-    # -------------------
     combined_lower = combined_text.lower()
     claimed_brands = []
 
@@ -573,9 +552,6 @@ def analyze_email(sender, subject, body):
         if brand in combined_lower:
             claimed_brands.append(brand)
 
-    # -------------------
-    # Sender vs claimed brand mismatch
-    # -------------------
     if sender_domain and claimed_brands:
         for brand in claimed_brands:
             allowed_domains = BRAND_DOMAINS[brand]
@@ -590,9 +566,6 @@ def analyze_email(sender, subject, body):
                     reasons.append(f"Claims to be '{brand}' but uses a free email provider")
                     categories_found.append("suspicious_sender")
 
-    # -------------------
-    # Combo scoring
-    # -------------------
     has_urgency = "urgency" in categories_found
     has_sender_issue = "suspicious_sender" in categories_found
     has_credentials = any(
@@ -627,10 +600,6 @@ def analyze_email(sender, subject, body):
         "sender": sender,
         "subject": subject
     }
-
-
-class OCRServiceError(Exception):
-    pass
 
 
 def preprocess_image_for_ocr(image_bytes):
@@ -693,6 +662,7 @@ def extract_text_from_image(image_file):
 
     return extracted_text
 
+
 def estimate_ocr_confidence(text):
     if not text:
         return 0.0
@@ -708,6 +678,7 @@ def estimate_ocr_confidence(text):
     confidence = max(0.0, min(confidence, 1.0))
 
     return round(confidence, 2)
+
 
 def analyze_image_file(image_file):
     try:
@@ -762,15 +733,15 @@ def analyze_image_file(image_file):
             continue
 
         if cleaned.startswith((
-            "060","061","062","063","064","065","066","067","068",
-            "071","072","073","074","076","078","079",
-            "081","082","083","084",
-            "011","021","031","041","051","086"
+            "060", "061", "062", "063", "064", "065", "066", "067", "068",
+            "071", "072", "073", "074", "076", "078", "079",
+            "081", "082", "083", "084",
+            "011", "021", "031", "041", "051", "086"
         )):
             if cleaned not in seen_phones:
                 seen_phones.add(cleaned)
                 extracted_phones.append(cleaned)
-                
+
     result["extracted_text"] = extracted_text
     result["ocr_confidence"] = ocr_confidence
     result["ocr_quality"] = ocr_quality
