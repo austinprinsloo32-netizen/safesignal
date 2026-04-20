@@ -15,7 +15,16 @@ WEIGHTS = {
 BRAND_LOOKALIKE_HINTS = [
     "paypal", "capitec", "fnb", "absa", "nedbank", "sars", "microsoft"
 ]
-
+BRAND_DOMAINS = {
+    "paypal": ["paypal.com"],
+    "microsoft": ["microsoft.com", "outlook.com", "live.com"],
+    "sars": ["sars.gov.za"],
+    "capitec": ["capitecbank.co.za"],
+    "fnb": ["fnb.co.za"],
+    "absa": ["absa.co.za"],
+    "nedbank": ["nedbank.co.za"],
+    "standard bank": ["standardbank.co.za"],
+}
 SUSPICIOUS_PATTERNS = {
     "urgency": [
         "urgent", "immediately", "act now", "last chance", "final warning",
@@ -487,12 +496,18 @@ def analyze_email(sender, subject, body):
     score = result["score"]
     reasons = list(result["reasons"])
     categories_found = []
+    legit_reasons = result.get("legit_reasons", [])
 
     for insight in result.get("insights", []):
         for key, value in INSIGHT_MAP.items():
             if value["title"] == insight["title"]:
                 categories_found.append(key)
 
+    sender_domain = ""
+
+    # -------------------
+    # Sender checks
+    # -------------------
     if sender:
         sender_lower = sender.lower()
 
@@ -523,21 +538,75 @@ def analyze_email(sender, subject, body):
                 reasons.append("Sender domain contains numbers")
                 categories_found.append("suspicious_sender")
 
+    # -------------------
+    # Subject checks
+    # -------------------
+    subject_lower = subject.lower()
     if subject:
-        subject_lower = subject.lower()
         if any(word in subject_lower for word in ["urgent", "verify", "suspended", "winner", "refund", "payment"]):
             score += WEIGHTS["strong"]
             reasons.append("Subject line uses urgent or scam-style wording")
             categories_found.append("urgency")
 
+    # -------------------
+    # Brand claim detection
+    # -------------------
+    combined_lower = combined_text.lower()
+    claimed_brands = []
+
+    for brand in BRAND_DOMAINS:
+        if brand in combined_lower:
+            claimed_brands.append(brand)
+
+    # -------------------
+    # Sender vs claimed brand mismatch
+    # -------------------
+    if sender_domain and claimed_brands:
+        for brand in claimed_brands:
+            allowed_domains = BRAND_DOMAINS[brand]
+
+            if not any(sender_domain.endswith(valid_domain) for valid_domain in allowed_domains):
+                score += WEIGHTS["strong"]
+                reasons.append(f"Sender domain does not match claimed brand: '{brand}'")
+                categories_found.append("suspicious_sender")
+
+                if sender_domain in FREE_EMAIL_PROVIDERS:
+                    score += WEIGHTS["critical"]
+                    reasons.append(f"Claims to be '{brand}' but uses a free email provider")
+                    categories_found.append("suspicious_sender")
+
+    # -------------------
+    # Combo scoring
+    # -------------------
+    has_urgency = "urgency" in categories_found
+    has_sender_issue = "suspicious_sender" in categories_found
+    has_credentials = any(
+        phrase in combined_lower
+        for phrase in ["password", "otp", "pin", "login", "verify your account", "security code"]
+    )
+
+    if has_sender_issue and has_urgency:
+        score += WEIGHTS["strong"]
+        reasons.append("Combo: suspicious sender + urgency")
+        categories_found.append("suspicious_sender")
+
+    if has_sender_issue and has_credentials:
+        score += WEIGHTS["critical"]
+        reasons.append("Combo: suspicious sender + credential request")
+        categories_found.append("suspicious_sender")
+
     unique_reasons = list(dict.fromkeys(reasons))
     insights = generate_insights(categories_found)
     risk, advice = classify_risk(score)
+
+    if not unique_reasons:
+        unique_reasons = ["No strong scam indicators were found in the email."]
 
     return {
         "risk": risk,
         "score": score,
         "reasons": unique_reasons,
+        "legit_reasons": legit_reasons,
         "insights": insights,
         "advice": advice,
         "sender": sender,
