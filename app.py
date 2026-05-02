@@ -11,6 +11,7 @@ app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-change-this")
 CORS(app, supports_credentials=True)
 
 DB_NAME = "safesignal.db"
+ADMIN_EMAIL = "austinprinsloo64@gmail.com"
 
 
 def get_db():
@@ -133,11 +134,7 @@ def register():
         return jsonify({
             "success": True,
             "message": "Account created successfully.",
-            "user": {
-                "id": user_id,
-                "email": email,
-                "balance": 0
-            }
+            "user": {"id": user_id, "email": email, "balance": 0}
         })
 
     except sqlite3.IntegrityError:
@@ -155,7 +152,6 @@ def login():
 
     conn = get_db()
     cursor = conn.cursor()
-
     cursor.execute("SELECT * FROM users WHERE email = ?", (email,))
     user = cursor.fetchone()
     conn.close()
@@ -169,11 +165,7 @@ def login():
     return jsonify({
         "success": True,
         "message": "Logged in successfully.",
-        "user": {
-            "id": user["id"],
-            "email": user["email"],
-            "balance": user["balance"]
-        }
+        "user": {"id": user["id"], "email": user["email"], "balance": user["balance"]}
     })
 
 
@@ -192,7 +184,6 @@ def me():
 
     conn = get_db()
     cursor = conn.cursor()
-
     cursor.execute("SELECT id, email, balance FROM users WHERE id = ?", (user_id,))
     user = cursor.fetchone()
     conn.close()
@@ -203,11 +194,7 @@ def me():
 
     return jsonify({
         "logged_in": True,
-        "user": {
-            "id": user["id"],
-            "email": user["email"],
-            "balance": user["balance"]
-        }
+        "user": {"id": user["id"], "email": user["email"], "balance": user["balance"]}
     })
 
 
@@ -338,17 +325,13 @@ def dashboard_data():
         ]
     })
 
+
 @app.route("/admin-data", methods=["GET"])
 def admin_data():
-    user_id = session.get("user_id")
-    email = session.get("email")
+    email = (session.get("email") or "").lower()
 
-    # For now, only your email can view admin stats
-    if email != "Austinprinsloo64@gmail.com":
-        return jsonify({
-            "success": False,
-            "message": "Unauthorized"
-        }), 403
+    if email != ADMIN_EMAIL:
+        return jsonify({"success": False, "message": "Unauthorized"}), 403
 
     conn = get_db()
     cursor = conn.cursor()
@@ -409,6 +392,7 @@ def admin_data():
         ]
     })
 
+
 @app.route("/clear-history", methods=["DELETE"])
 def clear_history():
     user_id = session.get("user_id")
@@ -421,23 +405,19 @@ def clear_history():
 
     conn = get_db()
     cursor = conn.cursor()
-
     cursor.execute("DELETE FROM scans WHERE user_id = ?", (user_id,))
-
     conn.commit()
     conn.close()
 
-    return jsonify({
-        "success": True,
-        "message": "Scan history cleared successfully."
-    })
+    return jsonify({"success": True, "message": "Scan history cleared successfully."})
 
-    @app.route("/cpx-postback", methods=["GET"])
-    def cpx_postback():
-        user_id = request.args.get("user_id")
-        reward = request.args.get("reward")
-        trans_id = request.args.get("trans_id")
-        status = request.args.get("status")
+
+@app.route("/cpx-postback", methods=["GET"])
+def cpx_postback():
+    user_id = request.args.get("user_id")
+    reward = request.args.get("reward")
+    trans_id = request.args.get("trans_id")
+    status = request.args.get("status")
 
     if not user_id or not reward:
         return "missing params", 400
@@ -446,7 +426,7 @@ def clear_history():
         conn = get_db()
         cursor = conn.cursor()
 
-        if status == "1":  # approved
+        if status == "1":
             cursor.execute("""
                 UPDATE users
                 SET balance = balance + ?
@@ -455,12 +435,12 @@ def clear_history():
 
         conn.commit()
         conn.close()
-
         return "ok"
 
     except Exception as e:
         print("CPX error:", e)
         return "error", 500
+
 
 if __name__ == "__main__":
     app.run(
