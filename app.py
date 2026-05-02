@@ -327,7 +327,29 @@ def dashboard_data():
         ]
     })
 
+@app.route("/clear-history", methods=["DELETE"])
+def clear_history():
+    user_id = session.get("user_id")
 
+    if not user_id:
+        return jsonify({
+            "success": False,
+            "message": "You must be logged in to clear your history."
+        }), 401
+
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute("DELETE FROM scans WHERE user_id = ?", (user_id,))
+
+    conn.commit()
+    conn.close()
+
+    return jsonify({
+        "success": True,
+        "message": "Scan history cleared successfully."
+    })
+    
 if __name__ == "__main__":
     app.run(
         host="0.0.0.0",

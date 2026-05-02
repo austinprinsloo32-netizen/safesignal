@@ -1,3 +1,4 @@
+const CLEAR_HISTORY_URL = `${BASE_URL}/clear-history`;
 const BASE_URL = "https://safesignal-7j44.onrender.com";
 const API_URL = `${BASE_URL}/analyze`;
 const DASHBOARD_URL = `${BASE_URL}/dashboard-data`;
@@ -214,8 +215,30 @@ function saveToHistory(entry) {
 }
 
 
-function clearHistory() {
-    alert("Backend history clearing will be added next.");
+async function clearHistory() {
+    const confirmClear = confirm("Are you sure you want to clear your scan history?");
+
+    if (!confirmClear) return;
+
+    try {
+        const response = await fetch(CLEAR_HISTORY_URL, {
+            method: "DELETE",
+            credentials: "include"
+        });
+
+        const data = await response.json();
+
+        alert(data.message);
+
+        if (data.success) {
+            await renderHistory();
+            await updateDashboard();
+        }
+
+    } catch (error) {
+        alert("Could not clear history. Please try again.");
+        console.error("Clear history error:", error);
+    }
 }
 
 async function renderHistory() {
