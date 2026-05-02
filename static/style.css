@@ -800,3 +800,7 @@ input[type="file"] {
   color: #aaa;
   cursor: not-allowed;
 }
+
+.hidden {
+  display: none;
+}
