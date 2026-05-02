@@ -46,6 +46,12 @@ def init_db():
         )
     """)
 
+    cursor.execute("PRAGMA table_info(scans)")
+    columns = [column[1] for column in cursor.fetchall()]
+
+    if "user_id" not in columns:
+        cursor.execute("ALTER TABLE scans ADD COLUMN user_id INTEGER")
+
     conn.commit()
     conn.close()
 
