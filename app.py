@@ -14,8 +14,10 @@ DB_NAME = "safesignal.db"
 
 
 def get_db():
-    conn = sqlite3.connect(DB_NAME)
+    conn = sqlite3.connect(DB_NAME, timeout=10)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode=WAL;")
+    conn.execute("PRAGMA busy_timeout = 10000;")
     return conn
 
 
@@ -57,23 +59,32 @@ def init_db():
 
 
 def save_scan(user_id, mode, risk, score, input_preview):
-    conn = get_db()
-    cursor = conn.cursor()
+    conn = None
 
-    cursor.execute("""
-        INSERT INTO scans (user_id, mode, risk, score, input_preview, created_at)
-        VALUES (?, ?, ?, ?, ?, ?)
-    """, (
-        user_id,
-        mode,
-        risk,
-        score,
-        str(input_preview)[:150],
-        datetime.utcnow().isoformat()
-    ))
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
 
-    conn.commit()
-    conn.close()
+        cursor.execute("""
+            INSERT INTO scans (user_id, mode, risk, score, input_preview, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (
+            user_id,
+            mode,
+            risk,
+            score,
+            str(input_preview)[:150],
+            datetime.utcnow().isoformat()
+        ))
+
+        conn.commit()
+
+    except Exception as e:
+        print("Save scan error:", e)
+
+    finally:
+        if conn:
+            conn.close()
 
 
 init_db()
