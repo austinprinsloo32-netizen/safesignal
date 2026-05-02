@@ -254,6 +254,44 @@
         </div>
       </section>
 
+<section id="adminDashboard" class="admin-section hidden">
+  <div class="admin-header">
+    <h2>🛠️ Admin Dashboard</h2>
+    <p>Platform monitoring and fraud overview</p>
+  </div>
+
+  <div class="admin-grid">
+    <div class="dash-card">
+      <span>Total Users</span>
+      <strong id="adminTotalUsers">0</strong>
+    </div>
+
+    <div class="dash-card">
+      <span>Total Scans</span>
+      <strong id="adminTotalScans">0</strong>
+    </div>
+
+    <div class="dash-card">
+      <span>High Risk Scans</span>
+      <strong id="adminHighRiskScans">0</strong>
+    </div>
+  </div>
+
+  <div class="admin-list-card">
+    <h3>Latest Users</h3>
+    <div id="adminLatestUsers" class="admin-list">
+      <div class="empty-state">No admin data loaded.</div>
+    </div>
+  </div>
+
+  <div class="admin-list-card">
+    <h3>Latest Scans</h3>
+    <div id="adminLatestScans" class="admin-list">
+      <div class="empty-state">No admin data loaded.</div>
+    </div>
+  </div>
+</section>
+
       <section class="history-section">
         <div class="history-header">
           <h3>Recent scans</h3>

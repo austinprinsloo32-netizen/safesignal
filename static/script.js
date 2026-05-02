@@ -1,5 +1,6 @@
 const API_URL = "/analyze";
 const DASHBOARD_URL = "/dashboard-data";
+const ADMIN_URL = "/admin-data";
 const REGISTER_URL = "/register";
 const LOGIN_URL = "/login";
 const LOGOUT_URL = "/logout";
@@ -27,6 +28,7 @@ async function checkAuthStatus() {
 
         const data = await response.json();
         updateAuthUI(data);
+        await loadAdminDashboard();
 
     } catch (error) {
         console.error("Auth status error:", error);
@@ -53,6 +55,60 @@ function updateAuthUI(data) {
         userPanel.classList.add("hidden");
         authStatus.textContent = "Create an account or log in to save your scans.";
         authUserEmail.textContent = "";
+
+        const adminDashboard = document.getElementById("adminDashboard");
+        if (adminDashboard) adminDashboard.classList.add("hidden");
+    }
+}
+
+async function loadAdminDashboard() {
+    const adminDashboard = document.getElementById("adminDashboard");
+    if (!adminDashboard) return;
+
+    try {
+        const response = await fetch(ADMIN_URL, {
+            method: "GET",
+            credentials: "include"
+        });
+
+        if (!response.ok) {
+            adminDashboard.classList.add("hidden");
+            return;
+        }
+
+        const data = await response.json();
+
+        if (!data.success) {
+            adminDashboard.classList.add("hidden");
+            return;
+        }
+
+        adminDashboard.classList.remove("hidden");
+
+        document.getElementById("adminTotalUsers").textContent = data.total_users;
+        document.getElementById("adminTotalScans").textContent = data.total_scans;
+        document.getElementById("adminHighRiskScans").textContent = data.high_risk_scans;
+
+        const latestUsers = document.getElementById("adminLatestUsers");
+        latestUsers.innerHTML = data.latest_users.map(user => `
+            <div class="admin-row">
+                <strong>${user.email}</strong>
+                <span>${user.balance} coins</span>
+            </div>
+        `).join("") || `<div class="empty-state">No users yet.</div>`;
+
+        const latestScans = document.getElementById("adminLatestScans");
+        latestScans.innerHTML = data.latest_scans.map(scan => `
+            <div class="admin-row">
+                <strong>${scan.email}</strong>
+                <span>${scan.mode} · ${scan.risk} · ${scan.score} pts</span>
+                <small>${scan.input_preview || "No preview"}</small>
+            </div>
+        `).join("") || `<div class="empty-state">No scans yet.</div>`;
+
+    } catch (error) {
+        adminDashboard.classList.add("hidden");
+        console.error("Admin dashboard error:", error);
     }
 }
 
@@ -76,6 +132,8 @@ async function registerUser() {
             document.getElementById("authPassword").value = "";
             await checkAuthStatus();
             await updateDashboard();
+            await renderHistory();
+            await loadAdminDashboard();
         }
 
     } catch (error) {
@@ -104,6 +162,8 @@ async function loginUser() {
             document.getElementById("authPassword").value = "";
             await checkAuthStatus();
             await updateDashboard();
+            await renderHistory();
+            await loadAdminDashboard();
         }
 
     } catch (error) {
@@ -121,6 +181,10 @@ async function logoutUser() {
 
         await checkAuthStatus();
         await updateDashboard();
+        await renderHistory();
+
+        const adminDashboard = document.getElementById("adminDashboard");
+        if (adminDashboard) adminDashboard.classList.add("hidden");
 
     } catch (error) {
         console.error("Logout error:", error);
@@ -211,18 +275,17 @@ function clearAll() {
 function saveToHistory(entry) {
     renderHistory();
     updateDashboard();
+    loadAdminDashboard();
 }
+
 function showSurveys() {
     const surveySection = document.getElementById("surveyWall");
 
     if (!surveySection) return;
 
     surveySection.classList.remove("hidden");
-
-    // Scroll to it smoothly
     surveySection.scrollIntoView({ behavior: "smooth" });
 }
-
 
 async function clearHistory() {
     const confirmClear = confirm("Are you sure you want to clear your scan history?");
@@ -242,6 +305,7 @@ async function clearHistory() {
         if (data.success) {
             await renderHistory();
             await updateDashboard();
+            await loadAdminDashboard();
         }
 
     } catch (error) {
@@ -567,5 +631,6 @@ document.addEventListener("DOMContentLoaded", () => {
     renderHistory();
     checkAuthStatus();
     updateDashboard();
+    loadAdminDashboard();
     handleModeChange();
 });

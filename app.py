@@ -338,6 +338,77 @@ def dashboard_data():
         ]
     })
 
+@app.route("/admin-data", methods=["GET"])
+def admin_data():
+    user_id = session.get("user_id")
+    email = session.get("email")
+
+    # For now, only your email can view admin stats
+    if email != "Austinprinsloo64@gmail.com":
+        return jsonify({
+            "success": False,
+            "message": "Unauthorized"
+        }), 403
+
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT COUNT(*) FROM users")
+    total_users = cursor.fetchone()[0]
+
+    cursor.execute("SELECT COUNT(*) FROM scans")
+    total_scans = cursor.fetchone()[0]
+
+    cursor.execute("SELECT COUNT(*) FROM scans WHERE score >= 15")
+    high_risk_scans = cursor.fetchone()[0]
+
+    cursor.execute("""
+        SELECT id, email, balance, created_at
+        FROM users
+        ORDER BY id DESC
+        LIMIT 5
+    """)
+    latest_users = cursor.fetchall()
+
+    cursor.execute("""
+        SELECT scans.id, users.email, scans.mode, scans.risk, scans.score, scans.input_preview, scans.created_at
+        FROM scans
+        LEFT JOIN users ON scans.user_id = users.id
+        ORDER BY scans.id DESC
+        LIMIT 10
+    """)
+    latest_scans = cursor.fetchall()
+
+    conn.close()
+
+    return jsonify({
+        "success": True,
+        "total_users": total_users,
+        "total_scans": total_scans,
+        "high_risk_scans": high_risk_scans,
+        "latest_users": [
+            {
+                "id": row["id"],
+                "email": row["email"],
+                "balance": row["balance"],
+                "created_at": row["created_at"]
+            }
+            for row in latest_users
+        ],
+        "latest_scans": [
+            {
+                "id": row["id"],
+                "email": row["email"] or "Guest",
+                "mode": row["mode"],
+                "risk": row["risk"],
+                "score": row["score"],
+                "input_preview": row["input_preview"],
+                "created_at": row["created_at"]
+            }
+            for row in latest_scans
+        ]
+    })
+
 @app.route("/clear-history", methods=["DELETE"])
 def clear_history():
     user_id = session.get("user_id")

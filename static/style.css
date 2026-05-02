@@ -997,3 +997,60 @@ input[type="file"] {
 .hidden {
   display: none !important;
 }
+
+.admin-section {
+  margin-top: 24px;
+  padding: 16px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.admin-header {
+  margin-bottom: 14px;
+}
+
+.admin-header p {
+  font-size: 14px;
+  opacity: 0.75;
+}
+
+.admin-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.admin-list-card {
+  margin-top: 14px;
+  padding: 14px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.admin-list-card h3 {
+  margin-bottom: 10px;
+}
+
+.admin-row {
+  display: grid;
+  gap: 4px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.admin-row:last-child {
+  border-bottom: none;
+}
+
+.admin-row span,
+.admin-row small {
+  opacity: 0.75;
+}
+
+@media (max-width: 700px) {
+  .admin-grid {
+    grid-template-columns: 1fr;
+  }
+}
