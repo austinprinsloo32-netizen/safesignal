@@ -1,28 +1,48 @@
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template, session
 from flask_cors import CORS
+from werkzeug.security import generate_password_hash, check_password_hash
 from detector import analyze_text, analyze_single_url, analyze_email, analyze_image_file
 import os
 import sqlite3
 from datetime import datetime
 
 app = Flask(__name__)
-CORS(app)
+app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-change-this")
+CORS(app, supports_credentials=True)
 
 DB_NAME = "safesignal.db"
 
 
-def init_db():
+def get_db():
     conn = sqlite3.connect(DB_NAME)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def init_db():
+    conn = get_db()
     cursor = conn.cursor()
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL,
+            balance INTEGER DEFAULT 0,
+            created_at TEXT
+        )
+    """)
 
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS scans (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
             mode TEXT,
             risk TEXT,
             score INTEGER,
             input_preview TEXT,
-            created_at TEXT
+            created_at TEXT,
+            FOREIGN KEY (user_id) REFERENCES users(id)
         )
     """)
 
@@ -30,14 +50,15 @@ def init_db():
     conn.close()
 
 
-def save_scan(mode, risk, score, input_preview):
-    conn = sqlite3.connect(DB_NAME)
+def save_scan(user_id, mode, risk, score, input_preview):
+    conn = get_db()
     cursor = conn.cursor()
 
     cursor.execute("""
-        INSERT INTO scans (mode, risk, score, input_preview, created_at)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO scans (user_id, mode, risk, score, input_preview, created_at)
+        VALUES (?, ?, ?, ?, ?, ?)
     """, (
+        user_id,
         mode,
         risk,
         score,
@@ -57,10 +78,127 @@ def home():
     return render_template("index.html")
 
 
+@app.route("/register", methods=["POST"])
+def register():
+    data = request.get_json(silent=True) or {}
+    email = data.get("email", "").strip().lower()
+    password = data.get("password", "")
+
+    if not email or not password:
+        return jsonify({"success": False, "message": "Email and password are required."}), 400
+
+    if len(password) < 6:
+        return jsonify({"success": False, "message": "Password must be at least 6 characters."}), 400
+
+    password_hash = generate_password_hash(password)
+
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            INSERT INTO users (email, password_hash, balance, created_at)
+            VALUES (?, ?, ?, ?)
+        """, (
+            email,
+            password_hash,
+            0,
+            datetime.utcnow().isoformat()
+        ))
+
+        conn.commit()
+        user_id = cursor.lastrowid
+        conn.close()
+
+        session["user_id"] = user_id
+        session["email"] = email
+
+        return jsonify({
+            "success": True,
+            "message": "Account created successfully.",
+            "user": {
+                "id": user_id,
+                "email": email,
+                "balance": 0
+            }
+        })
+
+    except sqlite3.IntegrityError:
+        return jsonify({"success": False, "message": "This email is already registered."}), 409
+
+
+@app.route("/login", methods=["POST"])
+def login():
+    data = request.get_json(silent=True) or {}
+    email = data.get("email", "").strip().lower()
+    password = data.get("password", "")
+
+    if not email or not password:
+        return jsonify({"success": False, "message": "Email and password are required."}), 400
+
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT * FROM users WHERE email = ?", (email,))
+    user = cursor.fetchone()
+    conn.close()
+
+    if not user or not check_password_hash(user["password_hash"], password):
+        return jsonify({"success": False, "message": "Invalid email or password."}), 401
+
+    session["user_id"] = user["id"]
+    session["email"] = user["email"]
+
+    return jsonify({
+        "success": True,
+        "message": "Logged in successfully.",
+        "user": {
+            "id": user["id"],
+            "email": user["email"],
+            "balance": user["balance"]
+        }
+    })
+
+
+@app.route("/logout", methods=["POST"])
+def logout():
+    session.clear()
+    return jsonify({"success": True, "message": "Logged out successfully."})
+
+
+@app.route("/me", methods=["GET"])
+def me():
+    user_id = session.get("user_id")
+
+    if not user_id:
+        return jsonify({"logged_in": False})
+
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT id, email, balance FROM users WHERE id = ?", (user_id,))
+    user = cursor.fetchone()
+    conn.close()
+
+    if not user:
+        session.clear()
+        return jsonify({"logged_in": False})
+
+    return jsonify({
+        "logged_in": True,
+        "user": {
+            "id": user["id"],
+            "email": user["email"],
+            "balance": user["balance"]
+        }
+    })
+
+
 @app.route("/analyze", methods=["POST"])
 def analyze():
     mode = request.form.get("mode") or (request.get_json(silent=True) or {}).get("mode", "text")
     input_preview = ""
+    user_id = session.get("user_id")
 
     try:
         if mode == "image":
@@ -99,6 +237,7 @@ def analyze():
                 result = analyze_text(text)
 
         save_scan(
+            user_id,
             mode,
             result.get("risk", "Unknown"),
             result.get("score", 0),
@@ -120,44 +259,63 @@ def analyze():
 
 @app.route("/dashboard-data", methods=["GET"])
 def dashboard_data():
-    conn = sqlite3.connect(DB_NAME)
+    user_id = session.get("user_id")
+
+    conn = get_db()
     cursor = conn.cursor()
 
-    cursor.execute("SELECT COUNT(*) FROM scans")
+    if user_id:
+        filter_sql = "WHERE user_id = ?"
+        params = (user_id,)
+    else:
+        filter_sql = ""
+        params = ()
+
+    cursor.execute(f"SELECT COUNT(*) FROM scans {filter_sql}", params)
     total_scans = cursor.fetchone()[0]
 
-    cursor.execute("SELECT COUNT(*) FROM scans WHERE score >= 15")
+    cursor.execute(f"SELECT COUNT(*) FROM scans {filter_sql} {'AND' if user_id else 'WHERE'} score >= 15", params)
     high_risk = cursor.fetchone()[0]
 
-    cursor.execute("SELECT COUNT(*) FROM scans WHERE score >= 8 AND score < 15")
+    cursor.execute(f"SELECT COUNT(*) FROM scans {filter_sql} {'AND' if user_id else 'WHERE'} score >= 8 AND score < 15", params)
     medium_risk = cursor.fetchone()[0]
 
-    cursor.execute("SELECT COUNT(*) FROM scans WHERE score < 8")
+    cursor.execute(f"SELECT COUNT(*) FROM scans {filter_sql} {'AND' if user_id else 'WHERE'} score < 8", params)
     low_risk = cursor.fetchone()[0]
 
-    cursor.execute("""
+    cursor.execute(f"""
         SELECT mode, risk, score, input_preview, created_at
         FROM scans
+        {filter_sql}
         ORDER BY id DESC
         LIMIT 10
-    """)
+    """, params)
     recent_scans = cursor.fetchall()
+
+    balance = 0
+
+    if user_id:
+        cursor.execute("SELECT balance FROM users WHERE id = ?", (user_id,))
+        user = cursor.fetchone()
+        if user:
+            balance = user["balance"]
 
     conn.close()
 
     return jsonify({
+        "logged_in": bool(user_id),
         "total_scans": total_scans,
         "high_risk": high_risk,
         "medium_risk": medium_risk,
         "low_risk": low_risk,
-        "reward_balance": 0,
+        "reward_balance": balance,
         "recent_scans": [
             {
-                "mode": row[0],
-                "risk": row[1],
-                "score": row[2],
-                "input_preview": row[3],
-                "created_at": row[4]
+                "mode": row["mode"],
+                "risk": row["risk"],
+                "score": row["score"],
+                "input_preview": row["input_preview"],
+                "created_at": row["created_at"]
             }
             for row in recent_scans
         ]
