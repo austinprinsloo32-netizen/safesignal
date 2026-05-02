@@ -749,3 +749,54 @@ input[type="file"] {
         grid-template-columns: 1fr;
     }
 }
+.earn-section {
+  margin-top: 20px;
+}
+
+.earn-card {
+  background: rgba(20, 20, 30, 0.9);
+  border-radius: 16px;
+  padding: 20px;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+.earn-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.earn-badge {
+  background: #22c55e;
+  color: #000;
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 8px;
+}
+
+.earn-text {
+  margin: 10px 0;
+  opacity: 0.8;
+}
+
+.earn-features {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 15px;
+}
+
+.earn-feature {
+  font-size: 13px;
+  opacity: 0.9;
+}
+
+.earn-btn {
+  width: 100%;
+  padding: 10px;
+  border-radius: 10px;
+  border: none;
+  background: #444;
+  color: #aaa;
+  cursor: not-allowed;
+}
