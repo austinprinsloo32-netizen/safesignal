@@ -1,4 +1,5 @@
 const API_URL = "https://safesignal-7j44.onrender.com/analyze";
+const DASHBOARD_URL = "https://safesignal-7j44.onrender.com/dashboard-data";
 
 function getRiskClass(score) {
     if (score >= 15) return "high";
@@ -96,14 +97,16 @@ function clearAll() {
 function saveToHistory(entry) {
     const history = JSON.parse(localStorage.getItem("safesignal_history") || "[]");
     history.unshift(entry);
-    const trimmed = history.slice(0, 5);
+    const trimmed = history.slice(0, 20);
     localStorage.setItem("safesignal_history", JSON.stringify(trimmed));
     renderHistory();
+    updateDashboard();
 }
 
 function clearHistory() {
     localStorage.removeItem("safesignal_history");
     renderHistory();
+    updateDashboard();
 }
 
 function renderHistory() {
@@ -126,6 +129,33 @@ function renderHistory() {
             <div class="history-snippet">${item.text}</div>
         </div>
     `).join("");
+}
+
+async function updateDashboard() {
+    try {
+        const response = await fetch(DASHBOARD_URL);
+
+        if (!response.ok) {
+            throw new Error("Could not load dashboard data.");
+        }
+
+        const data = await response.json();
+
+        const totalScans = document.getElementById("totalScans");
+        const highRiskScans = document.getElementById("highRiskScans");
+        const mediumRiskScans = document.getElementById("mediumRiskScans");
+        const lowRiskScans = document.getElementById("lowRiskScans");
+        const rewardBalance = document.getElementById("rewardBalance");
+
+        if (totalScans) totalScans.textContent = data.total_scans;
+        if (highRiskScans) highRiskScans.textContent = data.high_risk;
+        if (mediumRiskScans) mediumRiskScans.textContent = data.medium_risk;
+        if (lowRiskScans) lowRiskScans.textContent = data.low_risk;
+        if (rewardBalance) rewardBalance.textContent = `${data.reward_balance} coins`;
+
+    } catch (error) {
+        console.error("Dashboard error:", error);
+    }
 }
 
 async function copyResult(text) {
@@ -205,7 +235,6 @@ async function checkScam() {
     button.disabled = true;
     btnText.textContent = "Analyzing...";
     btnLoader.classList.remove("hidden");
-
     result.classList.remove("hidden");
 
     try {
@@ -371,5 +400,6 @@ async function checkScam() {
 
 document.addEventListener("DOMContentLoaded", () => {
     renderHistory();
+    updateDashboard();
     handleModeChange();
 });
