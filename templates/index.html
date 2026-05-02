@@ -206,13 +206,21 @@
             <div class="earn-feature">✔ Secure payouts</div>
           </div>
 
-          <button class="earn-btn" disabled>Surveys Coming Soon</button>
+          <button class="earn-btn" onclick="showSurveys()">
+            Start Earning
+          </button>
         </div>
+        <button onclick="showSurveys()" class="earn-btn">
+        Start Earning
+        </button>
       </section>
 
       <section id="surveyWall" class="hidden">
-        <h2>🧾 Available Surveys</h2>
-        <div id="cpx-container"></div>
+      <h2>🧾 Available Surveys</h2>
+
+      <div id="cpx-container">
+      <p class="helper-text">Loading surveys...</p>
+      </div>
       </section>
 
       <section id="dashboard" class="dashboard-section">

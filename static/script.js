@@ -212,6 +212,16 @@ function saveToHistory(entry) {
     renderHistory();
     updateDashboard();
 }
+function showSurveys() {
+    const surveySection = document.getElementById("surveyWall");
+
+    if (!surveySection) return;
+
+    surveySection.classList.remove("hidden");
+
+    // Scroll to it smoothly
+    surveySection.scrollIntoView({ behavior: "smooth" });
+}
 
 
 async function clearHistory() {

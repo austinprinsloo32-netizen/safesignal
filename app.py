@@ -349,7 +349,37 @@ def clear_history():
         "success": True,
         "message": "Scan history cleared successfully."
     })
-    
+
+    @app.route("/cpx-postback", methods=["GET"])
+    def cpx_postback():
+        user_id = request.args.get("user_id")
+        reward = request.args.get("reward")
+        trans_id = request.args.get("trans_id")
+        status = request.args.get("status")
+
+    if not user_id or not reward:
+        return "missing params", 400
+
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+
+        if status == "1":  # approved
+            cursor.execute("""
+                UPDATE users
+                SET balance = balance + ?
+                WHERE id = ?
+            """, (int(float(reward)), int(user_id)))
+
+        conn.commit()
+        conn.close()
+
+        return "ok"
+
+    except Exception as e:
+        print("CPX error:", e)
+        return "error", 500
+
 if __name__ == "__main__":
     app.run(
         host="0.0.0.0",
