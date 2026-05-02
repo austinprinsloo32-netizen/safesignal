@@ -1,3 +1,5 @@
+const API_URL = "https://safesignal-7j44.onrender.com/analyze";
+
 function getRiskClass(score) {
     if (score >= 15) return "high";
     if (score >= 8) return "medium";
@@ -87,7 +89,7 @@ function clearAll() {
     if (emailSubject) emailSubject.value = "";
     if (emailBody) emailBody.value = "";
 
-    result.classList.add("hidden");
+    result.className = "result-card hidden";
     result.innerHTML = "";
 }
 
@@ -106,6 +108,8 @@ function clearHistory() {
 
 function renderHistory() {
     const historyList = document.getElementById("historyList");
+    if (!historyList) return;
+
     const history = JSON.parse(localStorage.getItem("safesignal_history") || "[]");
 
     if (!history.length) {
@@ -153,49 +157,29 @@ async function checkScam() {
     if (mode === "email") {
         if (!sender && !subject && !body) {
             result.classList.remove("hidden");
-            result.innerHTML = `
-                <div class="empty-state">
-                    Please fill in the email fields before analyzing.
-                </div>
-            `;
+            result.innerHTML = `<div class="empty-state">Please fill in the email fields before analyzing.</div>`;
             return;
         }
 
-        payload = {
-            mode: "email",
-            sender,
-            subject,
-            body
-        };
-
+        payload = { mode: "email", sender, subject, body };
         historyText = `${subject || "No subject"} | ${sender || "No sender"}`;
+
     } else if (mode === "url") {
         if (!text) {
             result.classList.remove("hidden");
-            result.innerHTML = `
-                <div class="empty-state">
-                    Please paste a URL before analyzing.
-                </div>
-            `;
+            result.innerHTML = `<div class="empty-state">Please paste a URL before analyzing.</div>`;
             return;
         }
 
-        payload = {
-            mode: "url",
-            url: text
-        };
-
+        payload = { mode: "url", url: text };
         historyText = text;
+
     } else if (mode === "image") {
         const file = imageInput.files[0];
 
         if (!file) {
             result.classList.remove("hidden");
-            result.innerHTML = `
-                <div class="empty-state">
-                    Please upload a screenshot before analyzing.
-                </div>
-            `;
+            result.innerHTML = `<div class="empty-state">Please upload a screenshot before analyzing.</div>`;
             return;
         }
 
@@ -206,22 +190,15 @@ async function checkScam() {
         payload = formData;
         historyText = `Screenshot scan: ${file.name}`;
         useFormData = true;
+
     } else {
         if (!text) {
             result.classList.remove("hidden");
-            result.innerHTML = `
-                <div class="empty-state">
-                    Please paste a message or link before analyzing.
-                </div>
-            `;
+            result.innerHTML = `<div class="empty-state">Please paste a message or link before analyzing.</div>`;
             return;
         }
 
-        payload = {
-            mode: "text",
-            text: text
-        };
-
+        payload = { mode: "text", text };
         historyText = text;
     }
 
@@ -232,20 +209,16 @@ async function checkScam() {
     result.classList.remove("hidden");
 
     try {
-        const fetchOptions = {
-            method: "POST"
-        };
+        const fetchOptions = { method: "POST" };
 
         if (useFormData) {
             fetchOptions.body = payload;
         } else {
-            fetchOptions.headers = {
-                "Content-Type": "application/json"
-            };
+            fetchOptions.headers = { "Content-Type": "application/json" };
             fetchOptions.body = JSON.stringify(payload);
         }
 
-        const response = await fetch("/analyze", fetchOptions);
+        const response = await fetch(API_URL, fetchOptions);
 
         if (!response.ok) {
             throw new Error("Server returned an error.");
@@ -255,17 +228,14 @@ async function checkScam() {
         const riskClass = getRiskClass(data.score);
         const riskIcon = getRiskIcon(data.score);
 
-        // Show main result card
         result.className = `result-card ${riskClass}`;
         result.classList.remove("hidden");
 
-        // Top summary
         document.getElementById("resultBadge").textContent = "Analysis Result";
         document.getElementById("resultTitle").textContent = `${riskIcon} ${data.risk}`;
         document.getElementById("resultScore").textContent = data.score;
         document.getElementById("resultMode").textContent = mode.toUpperCase();
 
-        // Confidence
         let confidence = "Medium";
         if (data.ocr_quality) {
             confidence = data.ocr_quality;
@@ -274,9 +244,9 @@ async function checkScam() {
         } else if (data.score <= 3) {
             confidence = "Low";
         }
+
         document.getElementById("resultConfidence").textContent = confidence;
 
-        // Summary
         let summary = "No strong scam indicators were found.";
         if (data.score >= 12) {
             summary = "Multiple strong scam signals were detected. This looks high risk.";
@@ -285,14 +255,13 @@ async function checkScam() {
         } else if (data.legit_reasons && data.legit_reasons.length) {
             summary = "This looks more legitimate based on the detected structure and contact details.";
         }
-        document.getElementById("resultSummary").textContent = summary;
 
-        // Advice
+        document.getElementById("resultSummary").textContent = summary;
         document.getElementById("resultAdvice").textContent = data.advice || "No advice available.";
 
-        // Risk reasons
         const riskList = document.getElementById("riskReasons");
         riskList.innerHTML = "";
+
         if (data.reasons && data.reasons.length) {
             data.reasons.forEach(reason => {
                 const li = document.createElement("li");
@@ -303,9 +272,9 @@ async function checkScam() {
             riskList.innerHTML = "<li>No specific warning signals were found.</li>";
         }
 
-        // Legit reasons
         const legitList = document.getElementById("legitReasons");
         legitList.innerHTML = "";
+
         if (data.legit_reasons && data.legit_reasons.length) {
             data.legit_reasons.forEach(reason => {
                 const li = document.createElement("li");
@@ -316,9 +285,9 @@ async function checkScam() {
             legitList.innerHTML = "<li>No strong legitimacy signals were detected.</li>";
         }
 
-        // Insights
         const insightsList = document.getElementById("insightsList");
         insightsList.innerHTML = "";
+
         if (data.insights && data.insights.length) {
             data.insights.forEach(insight => {
                 const div = document.createElement("div");
@@ -333,18 +302,16 @@ async function checkScam() {
             insightsList.innerHTML = `<p class="empty-state">No educational insights available for this scan.</p>`;
         }
 
-        // OCR blocks reset
         const ocrMetaBlock = document.getElementById("ocrMetaBlock");
         const extractedTextBlock = document.getElementById("extractedTextBlock");
         const urlsBlock = document.getElementById("urlsBlock");
         const phonesBlock = document.getElementById("phonesBlock");
 
-        ocrMetaBlock.classList.add("hidden");
-        extractedTextBlock.classList.add("hidden");
-        urlsBlock.classList.add("hidden");
-        phonesBlock.classList.add("hidden");
+        if (ocrMetaBlock) ocrMetaBlock.classList.add("hidden");
+        if (extractedTextBlock) extractedTextBlock.classList.add("hidden");
+        if (urlsBlock) urlsBlock.classList.add("hidden");
+        if (phonesBlock) phonesBlock.classList.add("hidden");
 
-        // OCR + extracted details for screenshot scans
         if (data.extracted_text !== undefined) {
             ocrMetaBlock.classList.remove("hidden");
             extractedTextBlock.classList.remove("hidden");
@@ -353,9 +320,9 @@ async function checkScam() {
             document.getElementById("ocrConfidenceText").textContent = data.ocr_confidence ?? "0";
             document.getElementById("extractedText").textContent = data.extracted_text || "No text extracted.";
 
-            // URLs
             const urlsContainer = document.getElementById("detectedUrls");
             urlsContainer.innerHTML = "";
+
             if (data.extracted_urls && data.extracted_urls.length) {
                 urlsBlock.classList.remove("hidden");
                 data.extracted_urls.forEach(url => {
@@ -366,9 +333,9 @@ async function checkScam() {
                 });
             }
 
-            // Phones
             const phonesContainer = document.getElementById("detectedPhones");
             phonesContainer.innerHTML = "";
+
             if (data.extracted_phones && data.extracted_phones.length) {
                 phonesBlock.classList.remove("hidden");
                 data.extracted_phones.forEach(phone => {
@@ -387,12 +354,14 @@ async function checkScam() {
         });
 
     } catch (error) {
+        result.className = "result-card";
         result.classList.remove("hidden");
         result.innerHTML = `
             <div class="error-state">
-                Could not connect to the backend. Make sure <strong>python app.py</strong> is running.
+                Could not connect to the backend. Please check that the Render backend service is live.
             </div>
         `;
+        console.error("SafeSignal backend error:", error);
     } finally {
         button.disabled = false;
         btnText.textContent = "Analyze";
@@ -400,124 +369,7 @@ async function checkScam() {
     }
 }
 
-       // Show result container
-result.classList.remove("hidden");
-
-// Top summary
-document.getElementById("resultTitle").textContent = `${riskIcon} ${data.risk}`;
-document.getElementById("resultScore").textContent = data.score;
-document.getElementById("resultMode").textContent = mode.toUpperCase();
-
-// Confidence logic
-let confidence = "Medium";
-if (data.ocr_quality) {
-    confidence = data.ocr_quality;
-} else if (data.score >= 12) {
-    confidence = "High";
-} else if (data.score <= 3) {
-    confidence = "Low";
-}
-document.getElementById("resultConfidence").textContent = confidence;
-
-// Smart explanation
-let summary = "No strong scam indicators were found.";
-if (data.score >= 12) {
-    summary = "Multiple strong scam signals detected. High risk.";
-} else if (data.score >= 6) {
-    summary = "Some suspicious patterns detected. Proceed with caution.";
-}
-document.getElementById("resultSummary").textContent = summary;
-
-// Advice
-document.getElementById("resultAdvice").textContent = data.advice;
-
-// Risk reasons
-const riskList = document.getElementById("riskReasons");
-riskList.innerHTML = "";
-if (data.reasons && data.reasons.length) {
-    data.reasons.forEach(r => {
-        const li = document.createElement("li");
-        li.textContent = r;
-        riskList.appendChild(li);
-    });
-} else {
-    riskList.innerHTML = "<li>No specific warning signals found.</li>";
-}
-
-// Legit reasons
-const legitList = document.getElementById("legitReasons");
-legitList.innerHTML = "";
-if (data.legit_reasons && data.legit_reasons.length) {
-    data.legit_reasons.forEach(r => {
-        const li = document.createElement("li");
-        li.textContent = r;
-        legitList.appendChild(li);
-    });
-} else {
-    legitList.innerHTML = "<li>No strong legitimacy signals detected.</li>";
-}
-
-// Insights
-const insightsList = document.getElementById("insightsList");
-insightsList.innerHTML = "";
-if (data.insights && data.insights.length) {
-    data.insights.forEach(insight => {
-        const div = document.createElement("div");
-        div.className = "insight-card";
-        div.innerHTML = `
-            <div class="insight-title">${insight.title}</div>
-            <div class="insight-text">${insight.explanation}</div>
-        `;
-        insightsList.appendChild(div);
-    });
-} else {
-    insightsList.innerHTML = `<p class="empty-state">No educational insights available.</p>`;
-}
-
-// OCR + extracted data (only for screenshots)
-if (data.extracted_text !== undefined) {
-    document.getElementById("ocrMetaBlock").classList.remove("hidden");
-    document.getElementById("extractedTextBlock").classList.remove("hidden");
-
-    document.getElementById("ocrQualityText").textContent = data.ocr_quality;
-    document.getElementById("ocrConfidenceText").textContent = data.ocr_confidence;
-
-    document.getElementById("extractedText").textContent = data.extracted_text;
-
-    // URLs
-    const urlsBlock = document.getElementById("urlsBlock");
-    const urlsContainer = document.getElementById("detectedUrls");
-    urlsContainer.innerHTML = "";
-
-    if (data.extracted_urls && data.extracted_urls.length) {
-        urlsBlock.classList.remove("hidden");
-        data.extracted_urls.forEach(url => {
-            const span = document.createElement("span");
-            span.className = "tag";
-            span.textContent = url;
-            urlsContainer.appendChild(span);
-        });
-    }
-
-    // Phones
-    const phonesBlock = document.getElementById("phonesBlock");
-    const phonesContainer = document.getElementById("detectedPhones");
-    phonesContainer.innerHTML = "";
-
-    if (data.extracted_phones && data.extracted_phones.length) {
-        phonesBlock.classList.remove("hidden");
-        data.extracted_phones.forEach(phone => {
-            const span = document.createElement("span");
-            span.className = "tag";
-            span.textContent = phone;
-            phonesContainer.appendChild(span);
-        });
-    }
-}
-
-// Save history
-saveToHistory({
-    text: historyText.length > 90 ? historyText.slice(0, 90) + "..." : historyText,
-    risk: data.risk,
-    score: data.score
+document.addEventListener("DOMContentLoaded", () => {
+    renderHistory();
+    handleModeChange();
 });
