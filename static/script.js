@@ -1,11 +1,10 @@
-const CLEAR_HISTORY_URL = `${BASE_URL}/clear-history`;
-const BASE_URL = "https://safesignal-7j44.onrender.com";
-const API_URL = `${BASE_URL}/analyze`;
-const DASHBOARD_URL = `${BASE_URL}/dashboard-data`;
-const REGISTER_URL = `${BASE_URL}/register`;
-const LOGIN_URL = `${BASE_URL}/login`;
-const LOGOUT_URL = `${BASE_URL}/logout`;
-const ME_URL = `${BASE_URL}/me`;
+const API_URL = "/analyze";
+const DASHBOARD_URL = "/dashboard-data";
+const REGISTER_URL = "/register";
+const LOGIN_URL = "/login";
+const LOGOUT_URL = "/logout";
+const ME_URL = "/me";
+const CLEAR_HISTORY_URL = "/clear-history";
 
 function getRiskClass(score) {
     if (score >= 15) return "high";
