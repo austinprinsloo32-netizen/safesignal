@@ -1,5 +1,10 @@
-const API_URL = "https://safesignal-7j44.onrender.com/analyze";
-const DASHBOARD_URL = "https://safesignal-7j44.onrender.com/dashboard-data";
+const BASE_URL = "https://safesignal-7j44.onrender.com";
+const API_URL = `${BASE_URL}/analyze`;
+const DASHBOARD_URL = `${BASE_URL}/dashboard-data`;
+const REGISTER_URL = `${BASE_URL}/register`;
+const LOGIN_URL = `${BASE_URL}/login`;
+const LOGOUT_URL = `${BASE_URL}/logout`;
+const ME_URL = `${BASE_URL}/me`;
 
 function getRiskClass(score) {
     if (score >= 15) return "high";
@@ -11,6 +16,115 @@ function getRiskIcon(score) {
     if (score >= 15) return "🚨";
     if (score >= 8) return "⚠️";
     return "✅";
+}
+
+async function checkAuthStatus() {
+    try {
+        const response = await fetch(ME_URL, {
+            method: "GET",
+            credentials: "include"
+        });
+
+        const data = await response.json();
+        updateAuthUI(data);
+
+    } catch (error) {
+        console.error("Auth status error:", error);
+    }
+}
+
+function updateAuthUI(data) {
+    const authForm = document.getElementById("authForm");
+    const userPanel = document.getElementById("userPanel");
+    const authStatus = document.getElementById("authStatus");
+    const authUserEmail = document.getElementById("authUserEmail");
+    const authMessage = document.getElementById("authMessage");
+
+    if (!authForm || !userPanel) return;
+
+    if (data.logged_in) {
+        authForm.classList.add("hidden");
+        userPanel.classList.remove("hidden");
+        authStatus.textContent = "Your scans are now linked to your account.";
+        authUserEmail.textContent = data.user.email;
+        if (authMessage) authMessage.textContent = "";
+    } else {
+        authForm.classList.remove("hidden");
+        userPanel.classList.add("hidden");
+        authStatus.textContent = "Create an account or log in to save your scans.";
+        authUserEmail.textContent = "";
+    }
+}
+
+async function registerUser() {
+    const email = document.getElementById("authEmail").value.trim();
+    const password = document.getElementById("authPassword").value;
+    const authMessage = document.getElementById("authMessage");
+
+    try {
+        const response = await fetch(REGISTER_URL, {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, password })
+        });
+
+        const data = await response.json();
+        authMessage.textContent = data.message;
+
+        if (data.success) {
+            document.getElementById("authPassword").value = "";
+            await checkAuthStatus();
+            await updateDashboard();
+        }
+
+    } catch (error) {
+        authMessage.textContent = "Could not register. Please try again.";
+        console.error("Register error:", error);
+    }
+}
+
+async function loginUser() {
+    const email = document.getElementById("authEmail").value.trim();
+    const password = document.getElementById("authPassword").value;
+    const authMessage = document.getElementById("authMessage");
+
+    try {
+        const response = await fetch(LOGIN_URL, {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, password })
+        });
+
+        const data = await response.json();
+        authMessage.textContent = data.message;
+
+        if (data.success) {
+            document.getElementById("authPassword").value = "";
+            await checkAuthStatus();
+            await updateDashboard();
+        }
+
+    } catch (error) {
+        authMessage.textContent = "Could not log in. Please try again.";
+        console.error("Login error:", error);
+    }
+}
+
+async function logoutUser() {
+    try {
+        await fetch(LOGOUT_URL, {
+            method: "POST",
+            credentials: "include"
+        });
+
+        await checkAuthStatus();
+        await updateDashboard();
+
+    } catch (error) {
+        console.error("Logout error:", error);
+    }
 }
 
 function handleModeChange() {
@@ -133,7 +247,10 @@ function renderHistory() {
 
 async function updateDashboard() {
     try {
-        const response = await fetch(DASHBOARD_URL);
+        const response = await fetch(DASHBOARD_URL, {
+            method: "GET",
+            credentials: "include"
+        });
 
         if (!response.ok) {
             throw new Error("Could not load dashboard data.");
@@ -238,7 +355,10 @@ async function checkScam() {
     result.classList.remove("hidden");
 
     try {
-        const fetchOptions = { method: "POST" };
+        const fetchOptions = {
+            method: "POST",
+            credentials: "include"
+        };
 
         if (useFormData) {
             fetchOptions.body = payload;
@@ -400,6 +520,7 @@ async function checkScam() {
 
 document.addEventListener("DOMContentLoaded", () => {
     renderHistory();
+    checkAuthStatus();
     updateDashboard();
     handleModeChange();
 });

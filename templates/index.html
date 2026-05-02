@@ -36,6 +36,30 @@
         </div>
       </section>
 
+      <section id="authSection" class="auth-section">
+        <div class="auth-header">
+          <h2>👤 Account</h2>
+          <p id="authStatus">Create an account or log in to save your scans.</p>
+        </div>
+
+        <div id="authForm" class="auth-form">
+          <input id="authEmail" type="email" placeholder="Email address" />
+          <input id="authPassword" type="password" placeholder="Password" />
+
+          <div class="auth-actions">
+            <button type="button" onclick="registerUser()">Register</button>
+            <button type="button" class="secondary-btn" onclick="loginUser()">Login</button>
+          </div>
+
+          <p id="authMessage" class="helper-text"></p>
+        </div>
+
+        <div id="userPanel" class="user-panel hidden">
+          <p>Logged in as <strong id="authUserEmail"></strong></p>
+          <button type="button" class="secondary-btn" onclick="logoutUser()">Logout</button>
+        </div>
+      </section>
+
       <label for="scanMode" class="label">Scan mode</label>
       <select id="scanMode" onchange="handleModeChange()">
         <option value="text">Text Scanner</option>
@@ -46,46 +70,30 @@
 
       <section id="singleInputSection">
         <label for="inputText" class="label" id="inputLabel">Paste a message or link</label>
-        <textarea
-          id="inputText"
-          placeholder="Example: URGENT! Your bank account is suspended. Verify now..."
-        ></textarea>
+        <textarea id="inputText" placeholder="Example: URGENT! Your bank account is suspended. Verify now..."></textarea>
       </section>
 
       <section id="emailSection" class="email-section hidden">
         <div class="input-grid">
           <div>
             <label for="emailSender" class="label">Sender</label>
-            <input
-              id="emailSender"
-              type="text"
-              placeholder="Example: support@bank-alerts-secure.com"
-            />
+            <input id="emailSender" type="text" placeholder="Example: support@bank-alerts-secure.com" />
           </div>
 
           <div>
             <label for="emailSubject" class="label">Subject</label>
-            <input
-              id="emailSubject"
-              type="text"
-              placeholder="Example: Urgent account verification required"
-            />
+            <input id="emailSubject" type="text" placeholder="Example: Urgent account verification required" />
           </div>
         </div>
 
         <label for="emailBody" class="label">Email body</label>
-        <textarea
-          id="emailBody"
-          placeholder="Paste the email message here..."
-        ></textarea>
+        <textarea id="emailBody" placeholder="Paste the email message here..."></textarea>
       </section>
 
       <section id="imageSection" class="hidden">
         <label for="imageInput" class="label">Upload screenshot</label>
         <input id="imageInput" type="file" accept="image/*" />
-        <p class="helper-text">
-          Upload a screenshot of a suspicious message, email, or social media post.
-        </p>
+        <p class="helper-text">Upload a screenshot of a suspicious message, email, or social media post.</p>
       </section>
 
       <div class="demo-buttons">
@@ -102,9 +110,7 @@
           <span class="btn-loader hidden"></span>
         </button>
 
-        <button id="clearBtn" class="secondary-btn" onclick="clearAll()">
-          Clear
-        </button>
+        <button id="clearBtn" class="secondary-btn" onclick="clearAll()">Clear</button>
       </div>
 
       <section id="result" class="result-card hidden">
@@ -112,9 +118,7 @@
           <div>
             <p id="resultBadge" class="result-badge">Analysis Result</p>
             <h2 id="resultTitle" class="result-title">Waiting for scan</h2>
-            <p id="resultSummary" class="result-summary">
-              Run a scan to see the result breakdown.
-            </p>
+            <p id="resultSummary" class="result-summary">Run a scan to see the result breakdown.</p>
           </div>
 
           <div class="result-score-box">
@@ -194,9 +198,7 @@
             <span class="earn-badge">New</span>
           </div>
 
-          <p class="earn-text">
-            Complete surveys and earn rewards for your time. Get paid for sharing your opinions.
-          </p>
+          <p class="earn-text">Complete surveys and earn rewards for your time. Get paid for sharing your opinions.</p>
 
           <div class="earn-features">
             <div class="earn-feature">✔ Quick surveys</div>
@@ -204,9 +206,7 @@
             <div class="earn-feature">✔ Secure payouts</div>
           </div>
 
-          <button class="earn-btn" disabled>
-            Surveys Coming Soon
-          </button>
+          <button class="earn-btn" disabled>Surveys Coming Soon</button>
         </div>
       </section>
 
