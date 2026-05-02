@@ -209,40 +209,53 @@ function clearAll() {
 }
 
 function saveToHistory(entry) {
-    const history = JSON.parse(localStorage.getItem("safesignal_history") || "[]");
-    history.unshift(entry);
-    const trimmed = history.slice(0, 20);
-    localStorage.setItem("safesignal_history", JSON.stringify(trimmed));
     renderHistory();
     updateDashboard();
 }
+
 
 function clearHistory() {
-    localStorage.removeItem("safesignal_history");
-    renderHistory();
-    updateDashboard();
+    alert("Backend history clearing will be added next.");
 }
 
-function renderHistory() {
+async function renderHistory() {
     const historyList = document.getElementById("historyList");
     if (!historyList) return;
 
-    const history = JSON.parse(localStorage.getItem("safesignal_history") || "[]");
+    try {
+        const response = await fetch(DASHBOARD_URL, {
+            method: "GET",
+            credentials: "include"
+        });
 
-    if (!history.length) {
-        historyList.innerHTML = `<div class="empty-state">No scans yet.</div>`;
-        return;
-    }
+        if (!response.ok) {
+            throw new Error("Could not load scan history.");
+        }
 
-    historyList.innerHTML = history.map(item => `
-        <div class="history-item">
-            <div class="history-item-top">
-                <span class="badge ${getRiskClass(item.score)}">${getRiskIcon(item.score)} ${item.risk}</span>
-                <span class="score-pill">${item.score} pts</span>
+        const data = await response.json();
+        const scans = data.recent_scans || [];
+
+        if (!scans.length) {
+            historyList.innerHTML = `<div class="empty-state">No scans yet.</div>`;
+            return;
+        }
+
+        historyList.innerHTML = scans.map(item => `
+            <div class="history-item">
+                <div class="history-item-top">
+                    <span class="badge ${getRiskClass(item.score)}">
+                        ${getRiskIcon(item.score)} ${item.risk}
+                    </span>
+                    <span class="score-pill">${item.score} pts</span>
+                </div>
+                <div class="history-snippet">${item.input_preview || "No preview available."}</div>
             </div>
-            <div class="history-snippet">${item.text}</div>
-        </div>
-    `).join("");
+        `).join("");
+
+    } catch (error) {
+        console.error("History error:", error);
+        historyList.innerHTML = `<div class="empty-state">Could not load recent scans.</div>`;
+    }
 }
 
 async function updateDashboard() {
