@@ -6,11 +6,13 @@
   <title>SafeSignal</title>
   <link rel="stylesheet" href="/static/style.css" />
 </head>
+
 <body>
   <div class="background-glow"></div>
 
   <main class="app-shell">
     <section class="card">
+
       <div class="header">
         <div class="logo-wrap">
           <span class="logo">🛡️</span>
@@ -185,11 +187,6 @@
         </div>
       </section>
 
-      <!-- KEEP EVERYTHING ABOVE THE SAME -->
-
-      </section>
-
-      <!-- ✅ NEW: EARN REWARDS SECTION -->
       <section id="earn" class="earn-section">
         <div class="earn-card">
           <div class="earn-header">
@@ -214,20 +211,56 @@
       </section>
 
       <section id="surveyWall" class="hidden">
-       <h2>🧾 Available Surveys</h2>
-      <div id="cpx-container"></div>
+        <h2>🧾 Available Surveys</h2>
+        <div id="cpx-container"></div>
       </section>
 
+      <section id="dashboard" class="dashboard-section">
+        <div class="dashboard-header">
+          <h2>📊 Dashboard</h2>
+          <p>Your SafeSignal activity overview</p>
+        </div>
+
+        <div class="dashboard-grid">
+          <div class="dash-card">
+            <span>Total Scans</span>
+            <strong id="totalScans">0</strong>
+          </div>
+
+          <div class="dash-card">
+            <span>High Risk</span>
+            <strong id="highRiskScans">0</strong>
+          </div>
+
+          <div class="dash-card">
+            <span>Medium Risk</span>
+            <strong id="mediumRiskScans">0</strong>
+          </div>
+
+          <div class="dash-card">
+            <span>Low Risk / Safe</span>
+            <strong id="lowRiskScans">0</strong>
+          </div>
+        </div>
+
+        <div class="wallet-card">
+          <h3>💰 Reward Wallet</h3>
+          <p>Balance: <strong id="rewardBalance">0 coins</strong></p>
+          <p class="helper-text">Survey rewards coming soon after CPX approval.</p>
+        </div>
+      </section>
 
       <section class="history-section">
         <div class="history-header">
           <h3>Recent scans</h3>
           <button class="small-btn" onclick="clearHistory()">Clear history</button>
         </div>
+
         <div id="historyList" class="history-list">
           <div class="empty-state">No scans yet.</div>
         </div>
       </section>
+
     </section>
   </main>
 
