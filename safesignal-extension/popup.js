@@ -84,15 +84,30 @@ document.getElementById("analyzeBtn").addEventListener("click", async () => {
 document.getElementById("useSelectionBtn").addEventListener("click", async () => {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
-  if (!tab?.id) return;
+  if (!tab?.id || tab.url.startsWith("chrome://")) {
+    alert("Selected text cannot be used on Chrome internal pages. Try it on a normal website.");
+    return;
+  }
 
-  const results = await chrome.scripting.executeScript({
-    target: { tabId: tab.id },
-    func: () => window.getSelection().toString()
-  });
+  try {
+    const results = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: () => window.getSelection().toString()
+    });
 
-  const selectedText = results?.[0]?.result || "";
-  document.getElementById("content").value = selectedText;
+    const selectedText = results?.[0]?.result || "";
+
+    if (!selectedText) {
+      alert("No text selected on the page.");
+      return;
+    }
+
+    document.getElementById("content").value = selectedText;
+
+  } catch (error) {
+    alert("Could not access selected text on this page.");
+    console.error(error);
+  }
 });
 
 document.addEventListener("DOMContentLoaded", async () => {
