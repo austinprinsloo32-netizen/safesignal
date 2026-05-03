@@ -12,6 +12,7 @@ CORS(app, supports_credentials=True)
 
 DB_NAME = "safesignal.db"
 ADMIN_EMAIL = "austinprinsloo64@gmail.com"
+FREE_SCAN_LIMIT = 5
 
 
 def get_db():
@@ -32,9 +33,16 @@ def init_db():
             email TEXT UNIQUE NOT NULL,
             password_hash TEXT NOT NULL,
             balance INTEGER DEFAULT 0,
+            plan TEXT DEFAULT 'free',
             created_at TEXT
         )
     """)
+
+    cursor.execute("PRAGMA table_info(users)")
+    user_columns = [column[1] for column in cursor.fetchall()]
+
+    if "plan" not in user_columns:
+        cursor.execute("ALTER TABLE users ADD COLUMN plan TEXT DEFAULT 'free'")
 
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS scans (
@@ -50,9 +58,9 @@ def init_db():
     """)
 
     cursor.execute("PRAGMA table_info(scans)")
-    columns = [column[1] for column in cursor.fetchall()]
+    scan_columns = [column[1] for column in cursor.fetchall()]
 
-    if "user_id" not in columns:
+    if "user_id" not in scan_columns:
         cursor.execute("ALTER TABLE scans ADD COLUMN user_id INTEGER")
 
     conn.commit()
@@ -88,6 +96,42 @@ def save_scan(user_id, mode, risk, score, input_preview):
             conn.close()
 
 
+def get_user_scan_status(user_id):
+    if not user_id:
+        return {
+            "plan": "guest",
+            "daily_scans": 0,
+            "daily_limit": FREE_SCAN_LIMIT,
+            "remaining_scans": FREE_SCAN_LIMIT
+        }
+
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT plan FROM users WHERE id = ?", (user_id,))
+    user = cursor.fetchone()
+
+    plan = user["plan"] if user and user["plan"] else "free"
+    today = datetime.utcnow().date().isoformat()
+
+    cursor.execute("""
+        SELECT COUNT(*) FROM scans
+        WHERE user_id = ? AND DATE(created_at) = ?
+    """, (user_id, today))
+
+    daily_scans = cursor.fetchone()[0]
+    conn.close()
+
+    remaining = max(FREE_SCAN_LIMIT - daily_scans, 0)
+
+    return {
+        "plan": plan,
+        "daily_scans": daily_scans,
+        "daily_limit": FREE_SCAN_LIMIT,
+        "remaining_scans": remaining
+    }
+
+
 init_db()
 
 
@@ -115,12 +159,13 @@ def register():
         cursor = conn.cursor()
 
         cursor.execute("""
-            INSERT INTO users (email, password_hash, balance, created_at)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO users (email, password_hash, balance, plan, created_at)
+            VALUES (?, ?, ?, ?, ?)
         """, (
             email,
             password_hash,
             0,
+            "free",
             datetime.utcnow().isoformat()
         ))
 
@@ -134,7 +179,12 @@ def register():
         return jsonify({
             "success": True,
             "message": "Account created successfully.",
-            "user": {"id": user_id, "email": email, "balance": 0}
+            "user": {
+                "id": user_id,
+                "email": email,
+                "balance": 0,
+                "plan": "free"
+            }
         })
 
     except sqlite3.IntegrityError:
@@ -165,7 +215,12 @@ def login():
     return jsonify({
         "success": True,
         "message": "Logged in successfully.",
-        "user": {"id": user["id"], "email": user["email"], "balance": user["balance"]}
+        "user": {
+            "id": user["id"],
+            "email": user["email"],
+            "balance": user["balance"],
+            "plan": user["plan"] if "plan" in user.keys() else "free"
+        }
     })
 
 
@@ -184,7 +239,7 @@ def me():
 
     conn = get_db()
     cursor = conn.cursor()
-    cursor.execute("SELECT id, email, balance FROM users WHERE id = ?", (user_id,))
+    cursor.execute("SELECT id, email, balance, plan FROM users WHERE id = ?", (user_id,))
     user = cursor.fetchone()
     conn.close()
 
@@ -194,7 +249,12 @@ def me():
 
     return jsonify({
         "logged_in": True,
-        "user": {"id": user["id"], "email": user["email"], "balance": user["balance"]}
+        "user": {
+            "id": user["id"],
+            "email": user["email"],
+            "balance": user["balance"],
+            "plan": user["plan"] or "free"
+        }
     })
 
 
@@ -203,6 +263,17 @@ def analyze():
     mode = request.form.get("mode") or (request.get_json(silent=True) or {}).get("mode", "text")
     input_preview = ""
     user_id = session.get("user_id")
+
+    scan_status = get_user_scan_status(user_id)
+
+    if user_id and scan_status["plan"] == "free" and scan_status["daily_scans"] >= FREE_SCAN_LIMIT:
+        return jsonify({
+            "error": "limit_reached",
+            "message": "You’ve reached your free daily scan limit. Upgrade for unlimited scans.",
+            "daily_limit": FREE_SCAN_LIMIT,
+            "daily_scans": scan_status["daily_scans"],
+            "remaining_scans": 0
+        }), 403
 
     try:
         if mode == "image":
@@ -247,6 +318,13 @@ def analyze():
             result.get("score", 0),
             input_preview
         )
+
+        updated_status = get_user_scan_status(user_id)
+
+        result["plan"] = updated_status["plan"]
+        result["daily_limit"] = updated_status["daily_limit"]
+        result["daily_scans"] = updated_status["daily_scans"]
+        result["remaining_scans"] = updated_status["remaining_scans"]
 
         return jsonify(result)
 
@@ -297,22 +375,30 @@ def dashboard_data():
     recent_scans = cursor.fetchall()
 
     balance = 0
+    plan = "guest"
 
     if user_id:
-        cursor.execute("SELECT balance FROM users WHERE id = ?", (user_id,))
+        cursor.execute("SELECT balance, plan FROM users WHERE id = ?", (user_id,))
         user = cursor.fetchone()
         if user:
             balance = user["balance"]
+            plan = user["plan"] or "free"
 
     conn.close()
 
+    scan_status = get_user_scan_status(user_id)
+
     return jsonify({
         "logged_in": bool(user_id),
+        "plan": plan,
         "total_scans": total_scans,
         "high_risk": high_risk,
         "medium_risk": medium_risk,
         "low_risk": low_risk,
         "reward_balance": balance,
+        "daily_limit": scan_status["daily_limit"],
+        "daily_scans": scan_status["daily_scans"],
+        "remaining_scans": scan_status["remaining_scans"],
         "recent_scans": [
             {
                 "mode": row["mode"],
@@ -346,7 +432,7 @@ def admin_data():
     high_risk_scans = cursor.fetchone()[0]
 
     cursor.execute("""
-        SELECT id, email, balance, created_at
+        SELECT id, email, balance, plan, created_at
         FROM users
         ORDER BY id DESC
         LIMIT 5
@@ -374,6 +460,7 @@ def admin_data():
                 "id": row["id"],
                 "email": row["email"],
                 "balance": row["balance"],
+                "plan": row["plan"] or "free",
                 "created_at": row["created_at"]
             }
             for row in latest_users
@@ -410,6 +497,29 @@ def clear_history():
     conn.close()
 
     return jsonify({"success": True, "message": "Scan history cleared successfully."})
+
+
+@app.route("/upgrade-demo", methods=["POST"])
+def upgrade_demo():
+    user_id = session.get("user_id")
+
+    if not user_id:
+        return jsonify({
+            "success": False,
+            "message": "You must be logged in to upgrade."
+        }), 401
+
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("UPDATE users SET plan = 'paid' WHERE id = ?", (user_id,))
+    conn.commit()
+    conn.close()
+
+    return jsonify({
+        "success": True,
+        "message": "Demo upgrade successful. You now have unlimited scans.",
+        "plan": "paid"
+    })
 
 
 @app.route("/cpx-postback", methods=["GET"])
