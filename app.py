@@ -112,6 +112,13 @@ def get_user_scan_status(user_id):
     user = cursor.fetchone()
 
     plan = user["plan"] if user and user["plan"] else "free"
+
+    if user_id:
+        cursor.execute("SELECT email FROM users WHERE id = ?", (user_id,))
+        email_row = cursor.fetchone()
+
+    if email_row and email_row["email"].lower() == ADMIN_EMAIL.lower():
+        plan = "paid"
     today = datetime.utcnow().date().isoformat()
 
     cursor.execute("""

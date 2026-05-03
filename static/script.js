@@ -537,6 +537,23 @@ async function checkScam() {
 
         const response = await fetch(API_URL, fetchOptions);
 
+            if (response.status === 403) {
+            const limitData = await response.json();
+
+            if (limitData.error === "limit_reached") {
+                result.className = "result-card medium";
+                result.classList.remove("hidden");
+                result.innerHTML = `
+                    <div class="empty-state">
+                        ⚠️ Free scan limit reached<br><br>
+                        You have used your 5 free scans for today.<br>
+                        Upgrade for unlimited scans.
+                    </div>
+                `;
+                return;
+            }
+        }
+
         if (!response.ok) {
             throw new Error("Server returned an error.");
         }
