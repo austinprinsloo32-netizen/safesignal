@@ -7,6 +7,30 @@ const LOGOUT_URL = "/logout";
 const ME_URL = "/me";
 const CLEAR_HISTORY_URL = "/clear-history";
 
+const LOCAL_USER_KEY = "safesignal_user";
+
+let currentUser = null;
+
+function saveLocalUser(user) {
+    if (!user) return;
+    localStorage.setItem(LOCAL_USER_KEY, JSON.stringify(user));
+    currentUser = user;
+}
+
+function getLocalUser() {
+    try {
+        const saved = localStorage.getItem(LOCAL_USER_KEY);
+        return saved ? JSON.parse(saved) : null;
+    } catch {
+        return null;
+    }
+}
+
+function clearLocalUser() {
+    localStorage.removeItem(LOCAL_USER_KEY);
+    currentUser = null;
+}
+
 function getRiskClass(score) {
     if (score >= 15) return "high";
     if (score >= 8) return "medium";
@@ -20,6 +44,15 @@ function getRiskIcon(score) {
 }
 
 async function checkAuthStatus() {
+    const savedUser = getLocalUser();
+
+    if (savedUser) {
+        updateAuthUI({
+            logged_in: true,
+            user: savedUser
+        });
+    }
+
     try {
         const response = await fetch(ME_URL, {
             method: "GET",
@@ -27,11 +60,25 @@ async function checkAuthStatus() {
         });
 
         const data = await response.json();
+
+        if (data.logged_in && data.user) {
+            saveLocalUser(data.user);
+        } else {
+            clearLocalUser();
+        }
+
         updateAuthUI(data);
         await loadAdminDashboard();
 
     } catch (error) {
         console.error("Auth status error:", error);
+
+        if (savedUser) {
+            updateAuthUI({
+                logged_in: true,
+                user: savedUser
+            });
+        }
     }
 }
 
@@ -47,14 +94,17 @@ function updateAuthUI(data) {
     if (data.logged_in) {
         authForm.classList.add("hidden");
         userPanel.classList.remove("hidden");
-        authStatus.textContent = "Your scans are now linked to your account.";
-        authUserEmail.textContent = data.user.email;
+
+        if (authStatus) authStatus.textContent = "Your scans are now linked to your account.";
+        if (authUserEmail) authUserEmail.textContent = data.user?.email || "";
         if (authMessage) authMessage.textContent = "";
+
     } else {
         authForm.classList.remove("hidden");
         userPanel.classList.add("hidden");
-        authStatus.textContent = "Create an account or log in to save your scans.";
-        authUserEmail.textContent = "";
+
+        if (authStatus) authStatus.textContent = "Create an account or log in to save your scans.";
+        if (authUserEmail) authUserEmail.textContent = "";
 
         const adminDashboard = document.getElementById("adminDashboard");
         if (adminDashboard) adminDashboard.classList.add("hidden");
@@ -129,7 +179,10 @@ async function registerUser() {
         authMessage.textContent = data.message;
 
         if (data.success) {
+            saveLocalUser(data.user || { email });
+
             document.getElementById("authPassword").value = "";
+
             await checkAuthStatus();
             await updateDashboard();
             await renderHistory();
@@ -159,7 +212,10 @@ async function loginUser() {
         authMessage.textContent = data.message;
 
         if (data.success) {
+            saveLocalUser(data.user || { email });
+
             document.getElementById("authPassword").value = "";
+
             await checkAuthStatus();
             await updateDashboard();
             await renderHistory();
@@ -179,6 +235,8 @@ async function logoutUser() {
             credentials: "include"
         });
 
+        clearLocalUser();
+
         await checkAuthStatus();
         await updateDashboard();
         await renderHistory();
@@ -187,6 +245,7 @@ async function logoutUser() {
         if (adminDashboard) adminDashboard.classList.add("hidden");
 
     } catch (error) {
+        clearLocalUser();
         console.error("Logout error:", error);
     }
 }
@@ -627,10 +686,20 @@ async function checkScam() {
     }
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-    renderHistory();
-    checkAuthStatus();
-    updateDashboard();
-    loadAdminDashboard();
+document.addEventListener("DOMContentLoaded", async () => {
+    const savedUser = getLocalUser();
+
+    if (savedUser) {
+        updateAuthUI({
+            logged_in: true,
+            user: savedUser
+        });
+    }
+
     handleModeChange();
+
+    await checkAuthStatus();
+    await updateDashboard();
+    await renderHistory();
+    await loadAdminDashboard();
 });
