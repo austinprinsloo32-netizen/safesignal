@@ -452,6 +452,30 @@ async function copyResult(text) {
     }
 }
 
+async function unlockScans() {
+    try {
+        const response = await fetch("/upgrade-demo", {
+            method: "POST",
+            credentials: "include"
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            alert("Extra scans unlocked successfully.");
+            await checkAuthStatus();
+            await updateDashboard();
+            await renderHistory();
+        } else {
+            alert(data.message || "Could not unlock scans.");
+        }
+
+    } catch (error) {
+        alert("Could not unlock scans. Please try again.");
+        console.error("Unlock scans error:", error);
+    }
+}
+
 async function checkScam() {
     const result = document.getElementById("result");
     const button = document.getElementById("analyzeBtn");
@@ -546,8 +570,10 @@ async function checkScam() {
                 result.innerHTML = `
                     <div class="empty-state">
                         ⚠️ Free scan limit reached<br><br>
-                        You have used your 5 free scans for today.<br>
-                        Upgrade for unlimited scans.
+                        You have used your 5 free scans for today.<br><br>
+                        <button onclick="unlockScans()" class="primary-btn">
+                            Get 5 more scans
+                        </button>
                     </div>
                 `;
                 return;
